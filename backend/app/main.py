@@ -17,10 +17,12 @@ from .models import BillShareConfirmation, BillingRequest, Bill, EventStatus, Ex
 from .schemas import BillingRequestCreate, BillingRequestOut, BillingRequestStatusUpdate, BillOut, EventCreate, EventOut, GroupCreate, GroupInviteOut, GroupMemberOut, GroupOut, LoginIn, ParticipantOut, PersonCreate, RecipientMessagesOut, RegisterIn, SettlementMessageOut, SettlementOut, SettlementTransfer, UserOut
 from .security import current_user, hash_password, make_token, verify_password
 from .split_engine import calculate_split, parse_allocations
+from .storage import LocalPrivateObjectStore
 import json
 from time import monotonic
 
 app = FastAPI(title="家庭朋友分帳 API", version="0.1.0")
+receipt_store = LocalPrivateObjectStore(settings.receipt_dir)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_host_list)
 app.add_middleware(CORSMiddleware, allow_origins=settings.cors_list, allow_credentials=True, allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"], allow_headers=["Content-Type", "X-CSRF-Token"])
 _rate_windows: dict[tuple[str, str], deque[float]] = defaultdict(deque)
@@ -53,7 +55,7 @@ def money_text(value: Decimal) -> str:
 
 @app.on_event("startup")
 def startup() -> None:
-    Path(settings.receipt_dir).mkdir(parents=True, exist_ok=True)
+    receipt_store.root.mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(bind=engine)
 
 
@@ -384,32 +386,32 @@ async def upload_receipt(bill_id: str, file: UploadFile = File(...), user: User 
     allowed = {"image/jpeg": ".jpg", "image/png": ".png"}
     if file.content_type not in allowed:
         raise HTTPException(status_code=400, detail="只支援 JPG 或 PNG 收據圖片")
-    receipt_dir = Path(settings.receipt_dir)
-    receipt_dir.mkdir(parents=True, exist_ok=True)
     key = f"{uuid4()}{allowed[file.content_type]}"
-    target = receipt_dir / key
     size = 0
     header = b""
+    chunks: list[bytes] = []
     try:
-        with target.open("wb") as output:
-            while chunk := await file.read(1024 * 1024):
-                if not header:
-                    header = chunk[:8]
-                    signatures = {
-                        "image/jpeg": header.startswith(b"\xff\xd8\xff"),
-                        "image/png": header.startswith(b"\x89PNG\r\n\x1a\n"),
-                    }
-                    if not signatures[file.content_type]:
-                        raise HTTPException(status_code=400, detail="收據檔案內容與副檔名不一致")
-                size += len(chunk)
-                if size > 10 * 1024 * 1024:
-                    raise HTTPException(status_code=413, detail="收據圖片不可超過 10 MB")
-                output.write(chunk)
+        while chunk := await file.read(1024 * 1024):
+            if not header:
+                header = chunk[:8]
+                signatures = {
+                    "image/jpeg": header.startswith(b"\xff\xd8\xff"),
+                    "image/png": header.startswith(b"\x89PNG\r\n\x1a\n"),
+                }
+                if not signatures[file.content_type]:
+                    raise HTTPException(status_code=400, detail="收據檔案內容與副檔名不一致")
+            size += len(chunk)
+            if size > 10 * 1024 * 1024:
+                raise HTTPException(status_code=413, detail="收據圖片不可超過 10 MB")
+            chunks.append(chunk)
+        if not chunks:
+            raise HTTPException(status_code=400, detail="收據檔案不可為空")
+        receipt_store.put(key, b"".join(chunks))
     except Exception:
-        target.unlink(missing_ok=True)
+        receipt_store.delete(key)
         raise
     if bill.receipt_key:
-        (receipt_dir / bill.receipt_key).unlink(missing_ok=True)
+        receipt_store.delete(bill.receipt_key)
     bill.receipt_key = key
     bill.receipt_name = file.filename or key
     bill.receipt_content_type = file.content_type
@@ -426,8 +428,8 @@ def download_receipt(bill_id: str, user: User = Depends(current_user), db: Sessi
         raise HTTPException(status_code=404, detail="找不到此收據")
     event = db.get(ExpenseEvent, bill.event_id)
     member_group(db, event.group_id, user)
-    path = Path(settings.receipt_dir) / bill.receipt_key
-    if not path.is_file():
+    path = receipt_store.path(bill.receipt_key)
+    if path is None:
         raise HTTPException(status_code=404, detail="收據檔案不存在")
     return FileResponse(path, media_type=bill.receipt_content_type or "application/octet-stream", filename=bill.receipt_name or bill.receipt_key)
 

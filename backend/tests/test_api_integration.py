@@ -90,3 +90,27 @@ def test_receipt_rejects_mismatched_file_content(clients):
     bill_id = event["bills"][0]["id"]
     response = owner.post(f"/api/bills/{bill_id}/receipt", files={"file": ("fake.png", b"not-a-png", "image/png")})
     assert response.status_code == 400
+
+
+def test_receipt_upload_download_and_empty_file_validation(clients):
+    owner, member, outsider = clients
+    register(owner, "receipt_ok", "receipt-ok@example.com", "Receipt Owner")
+    group = owner.post("/api/groups", json={"name": "Receipt access"}).json()
+    register(member, "receipt_member", "receipt-member@example.com", "Receipt Member")
+    invite = owner.post(f"/api/groups/{group['id']}/invites").json()
+    assert member.post(f"/api/invites/{invite['token']}/accept").status_code == 200
+    event = owner.post(f"/api/groups/{group['id']}/expenses", json={
+        "title": "Receipt", "bills": [{"category": "飲食", "description": "Lunch", "amount": "10.00", "participant_ids": [group["participants"][0]["id"]], "split_method": "EQUAL", "allocations": {}}],
+    }).json()
+    bill_id = event["bills"][0]["id"]
+    empty = owner.post(f"/api/bills/{bill_id}/receipt", files={"file": ("empty.png", b"", "image/png")})
+    assert empty.status_code == 400
+    png = b"\x89PNG\r\n\x1a\n" + b"minimal-test-image"
+    uploaded = owner.post(f"/api/bills/{bill_id}/receipt", files={"file": ("lunch.png", png, "image/png")})
+    assert uploaded.status_code == 200
+    downloaded = member.get(f"/api/bills/{bill_id}/receipt")
+    assert downloaded.status_code == 200
+    assert downloaded.headers["content-type"] == "image/png"
+    assert downloaded.content == png
+    register(outsider, "receipt_outsider", "receipt-outsider@example.com", "Receipt Outsider")
+    assert outsider.get(f"/api/bills/{bill_id}/receipt").status_code == 403
