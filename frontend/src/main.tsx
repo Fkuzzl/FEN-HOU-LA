@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/api$/, '');
+const apiUrl = (path: string) => `${API.replace(/\/$/, '')}${API.endsWith('/api') && path.startsWith('/api/') ? path.slice(4) : path}`;
 type User = { id: string; username: string; name: string; email: string };
 type Member = User;
 type Group = { id: string; name: string; owner_id: string; created_at: string; members: Member[]; participants?: { id: string; name: string; user_id?: string | null; email?: string | null }[] };
@@ -18,7 +19,7 @@ type RecipientMessage = { recipient_id: string; recipient_name: string; total: s
 
 const categories = ['外賣', '買餸', '娛樂', '購物', '交通', '飲食', '旅遊', '住宿', '其他'];
 async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API}${path}`, { ...options, credentials: 'include', headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } });
+  const res = await fetch(apiUrl(path), { ...options, credentials: 'include', headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
   const detail = body.detail;
@@ -29,7 +30,7 @@ async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 async function uploadReceipt<T>(path: string, file: File): Promise<T> {
   const form = new FormData(); form.append('file', file);
-  const res = await fetch(`${API}${path}`, { method: 'POST', body: form, credentials: 'include' });
+  const res = await fetch(apiUrl(path), { method: 'POST', body: form, credentials: 'include' });
   if (!res.ok) { const body = await res.json().catch(() => ({})); const detail = body.detail; throw new Error(typeof detail === 'string' ? detail : '收據上載失敗'); }
   return res.json();
 }
