@@ -28,5 +28,5 @@ The original vertical-slice target is complete, including registration, group se
 
 ## Remaining next phases
 
-- R2/provider adapter for receipt storage (local private storage is complete; R2 credentials/adapter remain deployment-config work)
+- R2/provider adapter for receipt storage (local default is complete; production R2 credentials and bucket setup remain)
 - Browser end-to-end tests and hosted deployment verification
