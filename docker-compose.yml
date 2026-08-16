@@ -1,0 +1,27 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: expense_splitter
+      POSTGRES_USER: expense
+      POSTGRES_PASSWORD: expense_dev_password
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: ["expense_db:/var/lib/postgresql/data"]
+  db-viewer:
+    image: adminer:4
+    ports: ["127.0.0.1:8080:8080"]
+    depends_on: [db]
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://expense:expense_dev_password@db:5432/expense_splitter
+      JWT_SECRET: local-development-secret-change-me
+      CORS_ORIGINS: http://localhost:5173
+    ports: ["127.0.0.1:8000:8000"]
+    depends_on: [db]
+  frontend:
+    build: ./frontend
+    ports: ["127.0.0.1:5173:80"]
+    depends_on: [backend]
+volumes:
+  expense_db:
