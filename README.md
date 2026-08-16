@@ -11,6 +11,17 @@ A small, responsive Traditional Chinese/HKD expense splitter for family and frie
 
 For a full containerized stack, run `docker compose up --build` and open <http://localhost:5173>.
 
+## Public demo stack
+
+To run an isolated public-test instance without touching the normal local database, set a one-time secret and start the separate Compose project:
+
+```powershell
+$env:PUBLIC_JWT_SECRET = "generate-a-long-random-value"
+docker compose -p expense_splitter_public -f docker-compose.yml -f docker-compose.public.yml up -d --build
+```
+
+The public override uses a separate PostgreSQL volume, keeps PostgreSQL/Adminer/FastAPI private to the Docker network, and exposes only the frontend on `127.0.0.1:55173`. A Cloudflare Tunnel can then publish that single frontend port. This is for testing; a named tunnel and propagated Cloudflare DNS should be used for a persistent production URL.
+
 The API is at <http://localhost:8000/docs>. Migrations can be run from `backend/` with `alembic upgrade head`.
 
 ## Where the data is stored
