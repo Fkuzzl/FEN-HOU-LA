@@ -69,3 +69,15 @@ def test_group_roles_requests_and_lifecycle_are_scoped(clients):
     assert owner.post(f"/api/groups/{group['id']}/leave").status_code == 409
     assert member.post(f"/api/groups/{group['id']}/leave").status_code == 204
     assert member.delete("/api/account").status_code == 204
+
+
+def test_receipt_rejects_mismatched_file_content(clients):
+    owner, _, _ = clients
+    register(owner, "receipt-owner", "receipt-owner@example.com", "Receipt Owner")
+    group = owner.post("/api/groups", json={"name": "Receipts"}).json()
+    event = owner.post(f"/api/groups/{group['id']}/expenses", json={
+        "title": "Receipt", "bills": [{"category": "飲食", "description": "Lunch", "amount": "10.00", "participant_ids": [group["participants"][0]["id"]], "split_method": "EQUAL", "allocations": {}}],
+    }).json()
+    bill_id = event["bills"][0]["id"]
+    response = owner.post(f"/api/bills/{bill_id}/receipt", files={"file": ("fake.png", b"not-a-png", "image/png")})
+    assert response.status_code == 400

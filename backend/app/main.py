@@ -322,9 +322,18 @@ async def upload_receipt(bill_id: str, file: UploadFile = File(...), user: User 
     key = f"{uuid4()}{allowed[file.content_type]}"
     target = receipt_dir / key
     size = 0
+    header = b""
     try:
         with target.open("wb") as output:
             while chunk := await file.read(1024 * 1024):
+                if not header:
+                    header = chunk[:8]
+                    signatures = {
+                        "image/jpeg": header.startswith(b"\xff\xd8\xff"),
+                        "image/png": header.startswith(b"\x89PNG\r\n\x1a\n"),
+                    }
+                    if not signatures[file.content_type]:
+                        raise HTTPException(status_code=400, detail="收據檔案內容與副檔名不一致")
                 size += len(chunk)
                 if size > 10 * 1024 * 1024:
                     raise HTTPException(status_code=413, detail="收據圖片不可超過 10 MB")
