@@ -10,6 +10,7 @@ venv/
 
 # Local runtime data and secrets
 *.db
+backend/receipts/
 .env
 .env.*
 !.env.example
@@ -18,6 +19,7 @@ venv/
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+frontend/test-results/
 npm-debug.log*
 .wrangler/
 

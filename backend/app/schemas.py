@@ -8,18 +8,20 @@ from .models import EventStatus, RequestStatus
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: str
+    username: str
     name: str
     email: EmailStr
 
 
 class RegisterIn(BaseModel):
+    username: str = Field(min_length=3, max_length=40, pattern=r"^[A-Za-z0-9_]+$")
     name: str = Field(min_length=1, max_length=120)
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
 
 
 class LoginIn(BaseModel):
-    email: EmailStr
+    username: str = Field(min_length=3, max_length=40)
     password: str
 
 
@@ -38,11 +40,20 @@ class GroupMemberOut(BaseModel):
     email: str
 
 
+class ParticipantOut(BaseModel):
+    id: str
+    name: str
+    user_id: str | None = None
+    email: str | None = None
+
+
 class GroupOut(BaseModel):
     id: str
     name: str
+    owner_id: str
     created_at: datetime
     members: list[GroupMemberOut]
+    participants: list[ParticipantOut] = []
 
 
 class GroupInviteOut(BaseModel):
@@ -74,6 +85,13 @@ class BillIn(BaseModel):
     split_method: str = Field(default="EQUAL", pattern="^(EQUAL|PERCENTAGE|FIXED)$")
     allocations: dict[str, Decimal | None] | None = None
 
+    @field_validator("allocations", mode="before")
+    @classmethod
+    def normalize_blank_allocations(cls, value):
+        if isinstance(value, dict):
+            return {key: (None if item is None or (isinstance(item, str) and not item.strip()) else item) for key, item in value.items()}
+        return value
+
     @field_validator("amount")
     @classmethod
     def cents_only(cls, value: Decimal) -> Decimal:
@@ -94,6 +112,8 @@ class BillOut(BaseModel):
     amount: Decimal
     occurred_at: datetime
     receipt_name: str | None
+    receipt_content_type: str | None = None
+    receipt_size: int | None = None
     participant_ids: list[str]
     shares: dict[str, Decimal]
     split_method: str
@@ -113,7 +133,8 @@ class EventOut(BaseModel):
 
 
 class BillingRequestCreate(BaseModel):
-    recipient_id: str
+    recipient_id: str | None = None
+    participant_id: str | None = None
     amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
     note: str = Field(min_length=1, max_length=160)
     event_id: str | None = None
@@ -131,6 +152,9 @@ class BillingRequestOut(BaseModel):
     created_at: datetime
     event_id: str | None
     bill_id: str | None
+    participant_id: str | None = None
+    completed_by: str | None = None
+    completed_at: datetime | None = None
 
 
 class BillingRequestStatusUpdate(BaseModel):

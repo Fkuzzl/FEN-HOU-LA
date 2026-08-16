@@ -16,8 +16,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: '22', cache: npm, cache-dependency-path: frontend/package.json }
-      - run: npm install
+        with: { node-version: '22', cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci
       - run: npm run lint
       - run: npm run build
-
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: pip install -r backend/requirements.txt
+      - run: npm ci
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: |
+          DATABASE_URL=sqlite:///./e2e.db JWT_SECRET=ci-test-secret COOKIE_SECURE=false TRUSTED_HOSTS=localhost,127.0.0.1 PYTHONPATH=backend python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          (cd frontend && npm run dev -- --host 127.0.0.1 --port 5173) &
+          for attempt in {1..20}; do curl --fail http://127.0.0.1:8000/api/health && break || sleep 1; done
+          npm --prefix frontend run test:e2e
