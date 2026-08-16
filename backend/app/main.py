@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from secrets import token_urlsafe
 from uuid import uuid4
@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session, joinedload
 
 from .config import settings
 from .db import Base, engine, get_db
-from .models import BillingRequest, Bill, EventStatus, ExpenseEvent, Group, GroupMember, RequestStatus, User
-from .schemas import BillingRequestCreate, BillingRequestOut, BillingRequestStatusUpdate, BillOut, EventCreate, EventOut, GroupCreate, GroupMemberOut, GroupOut, LoginIn, PersonCreate, RecipientMessagesOut, RegisterIn, SettlementMessageOut, UserOut
+from .models import BillingRequest, Bill, EventStatus, ExpenseEvent, Group, GroupInvite, GroupMember, RequestStatus, User
+from .schemas import BillingRequestCreate, BillingRequestOut, BillingRequestStatusUpdate, BillOut, EventCreate, EventOut, GroupCreate, GroupInviteOut, GroupMemberOut, GroupOut, LoginIn, PersonCreate, RecipientMessagesOut, RegisterIn, SettlementMessageOut, SettlementOut, SettlementTransfer, UserOut
 from .security import current_user, hash_password, make_token, verify_password
 from .split_engine import calculate_split, parse_allocations
 import json
@@ -44,6 +44,35 @@ def member_group(db: Session, group_id: str, user: User) -> Group:
     if not group:
         raise HTTPException(status_code=403, detail="你不是此群組成員")
     return group
+
+
+def settle_events(events: list[ExpenseEvent]) -> list[SettlementTransfer]:
+    balances: dict[str, Decimal] = {}
+    for event in events:
+        for bill in event.bills:
+            participants = [person.id for person in bill.participants]
+            if not participants:
+                continue
+            shares = calculate_split(bill.amount, participants, bill.split_method, parse_allocations(bill.split_allocations))
+            for participant_id, share in shares.items():
+                if participant_id == event.payer_id:
+                    continue
+                balances[event.payer_id] = balances.get(event.payer_id, Decimal("0.00")) + share
+                balances[participant_id] = balances.get(participant_id, Decimal("0.00")) - share
+    creditors = [[user_id, amount] for user_id, amount in balances.items() if amount > 0]
+    debtors = [[user_id, -amount] for user_id, amount in balances.items() if amount < 0]
+    transfers: list[SettlementTransfer] = []
+    for debtor in debtors:
+        for creditor in creditors:
+            amount = min(debtor[1], creditor[1]).quantize(Decimal("0.01"))
+            if amount <= 0:
+                continue
+            transfers.append(SettlementTransfer(from_user_id=debtor[0], to_user_id=creditor[0], amount=amount))
+            debtor[1] -= amount
+            creditor[1] -= amount
+            if debtor[1] <= 0:
+                break
+    return transfers
 
 
 def event_view(event: ExpenseEvent) -> EventOut:
@@ -104,6 +133,26 @@ def create_group(data: GroupCreate, user: User = Depends(current_user), db: Sess
     return {"id": group.id, "name": group.name, "created_at": group.created_at, "members": [user]}
 
 
+@app.post("/api/groups/{group_id}/invites", response_model=GroupInviteOut, status_code=201)
+def create_invite(group_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    member_group(db, group_id, user)
+    invite = GroupInvite(group_id=group_id, created_by=user.id, token=token_urlsafe(32), expires_at=datetime.now(timezone.utc) + timedelta(days=7))
+    db.add(invite); db.commit(); db.refresh(invite)
+    return {"token": invite.token, "group_id": group_id, "expires_at": invite.expires_at, "url": f"/?invite={invite.token}"}
+
+
+@app.post("/api/invites/{token}/accept", response_model=GroupOut)
+def accept_invite(token: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    invite = db.scalar(select(GroupInvite).where(GroupInvite.token == token))
+    if not invite or invite.used_at or invite.expires_at <= datetime.now(timezone.utc):
+        raise HTTPException(status_code=410, detail="邀請連結已失效")
+    if not db.scalar(select(GroupMember).where(GroupMember.group_id == invite.group_id, GroupMember.user_id == user.id)):
+        db.add(GroupMember(group_id=invite.group_id, user_id=user.id))
+    invite.used_at = datetime.now(timezone.utc); db.commit()
+    group = db.scalars(select(Group).where(Group.id == invite.group_id).options(joinedload(Group.members).joinedload(GroupMember.user))).unique().one()
+    return {"id": group.id, "name": group.name, "created_at": group.created_at, "members": [member.user for member in group.members]}
+
+
 @app.post("/api/groups/{group_id}/people", response_model=GroupMemberOut, status_code=201)
 def create_person(group_id: str, data: PersonCreate, user: User = Depends(current_user), db: Session = Depends(get_db)):
     member_group(db, group_id, user)
@@ -117,6 +166,19 @@ def list_expenses(group_id: str, user: User = Depends(current_user), db: Session
     member_group(db, group_id, user)
     events = db.scalars(select(ExpenseEvent).where(ExpenseEvent.group_id == group_id, ExpenseEvent.status == EventStatus.COMPLETED).options(joinedload(ExpenseEvent.bills).joinedload(Bill.participants))).unique().all()
     return [event_view(event) for event in events]
+
+
+@app.get("/api/groups/{group_id}/settlement", response_model=SettlementOut)
+def group_settlement(group_id: str, event_ids: str | None = None, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    member_group(db, group_id, user)
+    requested = [item for item in (event_ids or "").split(",") if item]
+    query = select(ExpenseEvent).where(ExpenseEvent.group_id == group_id, ExpenseEvent.status == EventStatus.COMPLETED).options(joinedload(ExpenseEvent.bills).joinedload(Bill.participants))
+    if requested:
+        query = query.where(ExpenseEvent.id.in_(requested))
+    events = db.scalars(query).unique().all()
+    if requested and len(events) != len(set(requested)):
+        raise HTTPException(status_code=400, detail="部分開支不存在或不屬於此群組")
+    return {"group_id": group_id, "event_ids": [event.id for event in events], "transfers": settle_events(events)}
 
 
 @app.get("/api/expenses/{event_id}", response_model=EventOut)

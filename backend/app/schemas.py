@@ -45,6 +45,25 @@ class GroupOut(BaseModel):
     members: list[GroupMemberOut]
 
 
+class GroupInviteOut(BaseModel):
+    token: str
+    group_id: str
+    expires_at: datetime
+    url: str
+
+
+class SettlementTransfer(BaseModel):
+    from_user_id: str
+    to_user_id: str
+    amount: Decimal
+
+
+class SettlementOut(BaseModel):
+    group_id: str
+    event_ids: list[str]
+    transfers: list[SettlementTransfer]
+
+
 class BillIn(BaseModel):
     category: str = Field(min_length=1, max_length=40)
     description: str = Field(min_length=1, max_length=160)

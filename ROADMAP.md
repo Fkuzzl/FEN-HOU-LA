@@ -15,11 +15,11 @@
 - Percentage and fixed/remaining per-bill splits
 - Aggregated per-recipient totals across all bills
 - Copy/share/print invoice-style messages for each recipient
+- Expiring 7-day group invite links with authenticated acceptance
+- Multi-event net settlement with deterministic cent-based transfer suggestions
 - Docker, migrations, CI, responsive Traditional Chinese UI
 
 ## Next
 
-- Expiring copyable group invites
 - R2 receipt upload and authorized downloads
-- Multi-event net settlement and print/share summary
 - Browser end-to-end tests and hosted deployment verification
