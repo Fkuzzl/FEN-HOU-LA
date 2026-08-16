@@ -78,7 +78,7 @@ def test_group_roles_requests_and_lifecycle_are_scoped(clients):
 
 def test_receipt_rejects_mismatched_file_content(clients):
     owner, _, _ = clients
-    register(owner, "receipt-owner", "receipt-owner@example.com", "Receipt Owner")
+    register(owner, "receipt_owner", "receipt-owner@example.com", "Receipt Owner")
     group = owner.post("/api/groups", json={"name": "Receipts"}).json()
     event = owner.post(f"/api/groups/{group['id']}/expenses", json={
         "title": "Receipt", "bills": [{"category": "飲食", "description": "Lunch", "amount": "10.00", "participant_ids": [group["participants"][0]["id"]], "split_method": "EQUAL", "allocations": {}}],
