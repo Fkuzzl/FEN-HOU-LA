@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from .config import settings
 from .db import Base, engine, get_db
-from .models import BillingRequest, Bill, EventStatus, ExpenseEvent, Group, GroupInvite, GroupMember, Participant, RequestStatus, User
+from .models import BillShareConfirmation, BillingRequest, Bill, EventStatus, ExpenseEvent, Group, GroupInvite, GroupMember, Participant, RequestStatus, User
 from .schemas import BillingRequestCreate, BillingRequestOut, BillingRequestStatusUpdate, BillOut, EventCreate, EventOut, GroupCreate, GroupInviteOut, GroupMemberOut, GroupOut, LoginIn, ParticipantOut, PersonCreate, RecipientMessagesOut, RegisterIn, SettlementMessageOut, SettlementOut, SettlementTransfer, UserOut
 from .security import current_user, hash_password, make_token, verify_password
 from .split_engine import calculate_split, parse_allocations
@@ -120,7 +120,8 @@ def event_view(event: ExpenseEvent) -> EventOut:
         participants = [person.id for person in bill.participant_roles] or [user.id for user in bill.participants]
         allocations = parse_allocations(bill.split_allocations)
         shares = calculate_split(bill.amount, participants, bill.split_method, allocations) if participants else {}
-        bills.append(BillOut(id=bill.id, category=bill.category, description=bill.description, amount=bill.amount, occurred_at=bill.occurred_at, receipt_name=bill.receipt_name, receipt_content_type=bill.receipt_content_type, receipt_size=bill.receipt_size, participant_ids=participants, shares=shares, split_method=bill.split_method, allocations=allocations))
+        confirmed = [item.participant_id for item in bill.share_confirmations if item.confirmed_at]
+        bills.append(BillOut(id=bill.id, category=bill.category, description=bill.description, amount=bill.amount, occurred_at=bill.occurred_at, receipt_name=bill.receipt_name, receipt_content_type=bill.receipt_content_type, receipt_size=bill.receipt_size, participant_ids=participants, shares=shares, split_method=bill.split_method, allocations=allocations, confirmed_participant_ids=confirmed))
         total += bill.amount
     return EventOut(id=event.id, group_id=event.group_id, payer_id=event.payer_id, title=event.title, status=event.status, created_at=event.created_at, completed_at=event.completed_at, total=total, bills=bills)
 
@@ -228,6 +229,32 @@ def create_person(group_id: str, data: PersonCreate, user: User = Depends(curren
     return {"id": participant.id, "name": participant.name, "user_id": None, "email": None}
 
 
+@app.delete("/api/groups/{group_id}/participants/{participant_id}", status_code=204)
+def delete_participant(group_id: str, participant_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    owner_group(db, group_id, user)
+    participant = db.scalar(select(Participant).where(Participant.id == participant_id, Participant.group_id == group_id))
+    if not participant:
+        raise HTTPException(status_code=404, detail="找不到此參與者")
+    if participant.user_id == user.id:
+        raise HTTPException(status_code=409, detail="不能移除自己；請使用離開群組")
+    referenced = db.scalar(select(Bill.id).join(Bill.participant_roles).where(Participant.id == participant_id))
+    if referenced:
+        raise HTTPException(status_code=409, detail="此參與者已有歷史分帳，不能刪除")
+    if participant.user_id:
+        membership = db.get(GroupMember, {"group_id": group_id, "user_id": participant.user_id})
+        if membership:
+            db.delete(membership)
+    db.delete(participant); db.commit()
+
+
+@app.delete("/api/groups/{group_id}", status_code=204)
+def delete_group(group_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    group = owner_group(db, group_id, user)
+    for event in db.scalars(select(ExpenseEvent).where(ExpenseEvent.group_id == group_id)).all():
+        db.delete(event)
+    db.delete(group); db.commit()
+
+
 @app.get("/api/groups/{group_id}/expenses", response_model=list[EventOut])
 def list_expenses(group_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
     member_group(db, group_id, user)
@@ -284,6 +311,46 @@ def get_expense(event_id: str, user: User = Depends(current_user), db: Session =
         raise HTTPException(status_code=404, detail="找不到此開支")
     member_group(db, event.group_id, user)
     return event_view(event)
+
+
+@app.patch("/api/bills/{bill_id}/shares/{participant_id}", response_model=BillOut)
+def confirm_bill_share(bill_id: str, participant_id: str, confirmed: bool, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    bill = db.scalar(select(Bill).where(Bill.id == bill_id).options(joinedload(Bill.participant_roles)))
+    if not bill:
+        raise HTTPException(status_code=404, detail="找不到此單據")
+    event = db.get(ExpenseEvent, bill.event_id)
+    owner_group(db, event.group_id, user)
+    participant = db.scalar(select(Participant).where(Participant.id == participant_id, Participant.group_id == event.group_id))
+    if not participant or participant not in bill.participant_roles:
+        raise HTTPException(status_code=400, detail="此參與者不在單據分帳內")
+    status = db.get(BillShareConfirmation, {"bill_id": bill_id, "participant_id": participant_id})
+    if not status:
+        status = BillShareConfirmation(bill_id=bill_id, participant_id=participant_id)
+        db.add(status)
+    status.confirmed_at = datetime.now(timezone.utc) if confirmed else None
+    status.confirmed_by = user.id if confirmed else None
+    db.commit()
+    refreshed = db.scalar(select(ExpenseEvent).where(ExpenseEvent.id == event.id).options(joinedload(ExpenseEvent.bills).joinedload(Bill.participant_roles)))
+    return next(item for item in event_view(refreshed).bills if item.id == bill_id)
+
+
+@app.delete("/api/expenses/{event_id}", status_code=204)
+def delete_expense(event_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    event = db.get(ExpenseEvent, event_id)
+    if not event:
+        raise HTTPException(status_code=404, detail="找不到此開支")
+    owner_group(db, event.group_id, user)
+    db.delete(event); db.commit()
+
+
+@app.delete("/api/bills/{bill_id}", status_code=204)
+def delete_bill(bill_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    bill = db.get(Bill, bill_id)
+    if not bill:
+        raise HTTPException(status_code=404, detail="找不到此單據")
+    event = db.get(ExpenseEvent, bill.event_id)
+    owner_group(db, event.group_id, user)
+    db.delete(bill); db.commit()
 
 
 @app.get("/api/expenses/{event_id}/message", response_model=SettlementMessageOut)

@@ -55,6 +55,11 @@ def test_group_roles_requests_and_lifecycle_are_scoped(clients):
     billing_request = owner.post(f"/api/groups/{group['id']}/billing-requests", json={"participant_id": guest.json()["id"], "amount": "50.00", "note": "晚飯", "event_id": event["id"]})
     assert billing_request.status_code == 201, billing_request.text
     request_id = billing_request.json()["id"]
+    share_update = owner.patch(f"/api/bills/{event['bills'][0]['id']}/shares/{guest.json()['id']}?confirmed=true")
+    assert share_update.status_code == 200
+    assert guest.json()["id"] in share_update.json()["confirmed_participant_ids"]
+    assert owner.patch(f"/api/bills/{event['bills'][0]['id']}/shares/{guest.json()['id']}?confirmed=false").status_code == 200
+    assert owner.delete(f"/api/groups/{group['id']}/participants/{guest.json()['id']}").status_code == 409
     assert owner.patch(f"/api/groups/{group['id']}/billing-requests/{request_id}", json={"status": "COMPLETED"}).status_code == 200
     assert owner.patch(f"/api/groups/{group['id']}/billing-requests/{request_id}", json={"status": "CANCELLED"}).status_code == 409
 

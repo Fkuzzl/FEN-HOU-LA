@@ -118,6 +118,7 @@ class BillOut(BaseModel):
     shares: dict[str, Decimal]
     split_method: str
     allocations: dict[str, Decimal | None] | None
+    confirmed_participant_ids: list[str] = []
 
 
 class EventOut(BaseModel):

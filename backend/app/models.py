@@ -112,6 +112,16 @@ class Bill(Base):
     event: Mapped[ExpenseEvent] = relationship(back_populates="bills")
     participants: Mapped[list[User]] = relationship(secondary="bill_participants")
     participant_roles: Mapped[list["Participant"]] = relationship(secondary="bill_participant_roles")
+    share_confirmations: Mapped[list["BillShareConfirmation"]] = relationship(back_populates="bill", cascade="all, delete-orphan")
+
+
+class BillShareConfirmation(Base):
+    __tablename__ = "bill_share_confirmations"
+    bill_id: Mapped[str] = mapped_column(ForeignKey("bills.id", ondelete="CASCADE"), primary_key=True)
+    participant_id: Mapped[str] = mapped_column(ForeignKey("participants.id", ondelete="CASCADE"), primary_key=True)
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    confirmed_by: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    bill: Mapped[Bill] = relationship(back_populates="share_confirmations")
 
 
 class RequestStatus(str, Enum):

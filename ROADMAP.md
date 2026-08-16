@@ -18,8 +18,15 @@
 - Expiring 7-day group invite links with authenticated acceptance
 - Multi-event net settlement with deterministic cent-based transfer suggestions
 - Docker, migrations, CI, responsive Traditional Chinese UI
+- Manual per-share payment confirmation with persisted audit timestamps
+- Clear registered-account versus unregistered-friend labels
+- Confirmation-gated deletion for groups, participants, events, and bills
 
-## Next
+## Audit status
+
+The original vertical-slice target is complete, including registration, group selection, multi-bill equal splitting, persistence, reload, history, and responsive entry. Post-MVP security and lifecycle foundations are also implemented. Explicit deletion is owner-only and confirmation-gated; historical participants referenced by bills remain protected.
+
+## Remaining next phases
 
 - R2 receipt upload and authorized downloads
 - Browser end-to-end tests and hosted deployment verification
