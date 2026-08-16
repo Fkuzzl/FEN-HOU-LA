@@ -9,9 +9,9 @@ services:
     ports: !reset []
     environment:
       JWT_SECRET: ${PUBLIC_JWT_SECRET:?Set PUBLIC_JWT_SECRET before starting the public demo}
-      CORS_ORIGINS: https://app.99696699.xyz
-      COOKIE_SECURE: "true"
-      TRUSTED_HOSTS: "app.99696699.xyz,localhost,127.0.0.1"
+      CORS_ORIGINS: ${PUBLIC_ORIGIN:-http://localhost:55173}
+      COOKIE_SECURE: ${PUBLIC_COOKIE_SECURE:-false}
+      TRUSTED_HOSTS: ${PUBLIC_TRUSTED_HOSTS:-localhost,127.0.0.1}
 
   frontend:
     ports: !override

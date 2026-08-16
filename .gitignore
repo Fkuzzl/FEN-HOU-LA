@@ -13,6 +13,7 @@ venv/
 backend/receipts/
 .env
 .env.*
+!.env.public.example
 !.env.example
 
 # Node / frontend build artifacts
@@ -22,6 +23,7 @@ frontend/.vite/
 frontend/test-results/
 npm-debug.log*
 .wrangler/
+runtime/
 
 # OS/editor files
 .DS_Store

@@ -1,6 +1,15 @@
 # Deployment readiness
 
-The public deployment has not been verified in this repository. Use the local flow first; it deliberately preserves the existing `backend/local-test.db` and local receipt files.
+The repository supports two reversible Docker modes. Local mode uses `expense_splitter_local` and the `expense_db` volume. Temporary online-demo mode uses `expense_splitter_public` and the separate `expense_splitter_public_v2_db` volume. Neither switch deletes volumes.
+
+```powershell
+.\scripts\start-local.ps1 -Build
+.\scripts\start-public.ps1 -PublicOrigin https://your-temporary-host.example -TrustedHosts your-temporary-host.example -Build
+.\scripts\status.ps1
+.\scripts\stop-all.ps1
+```
+
+The public-demo container stack has been verified locally. External reachability depends on the separately managed tunnel or proxy.
 
 ## Fresh production database
 
@@ -19,8 +28,8 @@ The existing local SQLite development database was created before migrations wer
 DATABASE_URL=postgresql+psycopg://...
 JWT_SECRET=<long-random-secret>
 COOKIE_SECURE=true
-CORS_ORIGINS=https://app.example.com
-TRUSTED_HOSTS=app.example.com
+CORS_ORIGINS=https://temporary-host.example
+TRUSTED_HOSTS=temporary-host.example
 RECEIPT_DIR=/private-receipts
 ```
 
