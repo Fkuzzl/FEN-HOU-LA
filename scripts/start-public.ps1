@@ -5,13 +5,16 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
+$docker = (Get-Command docker -ErrorAction SilentlyContinue).Source
+if (-not $docker) { $docker = @('C:\Program Files\Docker\Docker\resources\bin\docker.exe', "$env:LOCALAPPDATA\Programs\DockerDesktop\resources\bin\docker.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1 }
+if (-not $docker) { throw 'Docker CLI was not found. Start Docker Desktop or add docker.exe to PATH.' }
 if (-not $env:PUBLIC_JWT_SECRET) { $env:PUBLIC_JWT_SECRET = ((New-Guid).Guid + (New-Guid).Guid) }
 $env:PUBLIC_ORIGIN = $PublicOrigin
 $env:PUBLIC_TRUSTED_HOSTS = $TrustedHosts
 $env:PUBLIC_COOKIE_SECURE = if ($PublicOrigin.StartsWith('https://')) { 'true' } else { 'false' }
 $args = @('-p', 'expense_splitter_public', '-f', (Join-Path $root 'docker-compose.yml'), '-f', (Join-Path $root 'docker-compose.public.yml'), 'up', '-d')
 if ($Build) { $args += '--build' }
-docker compose @args
+& $docker compose @args
 Write-Host "Public-demo mode: $PublicOrigin"
 Write-Host 'Local binding:    http://localhost:55173'
 Write-Host 'Database volume:  expense_splitter_public_v2_db'
