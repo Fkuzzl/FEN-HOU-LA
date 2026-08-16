@@ -62,6 +62,10 @@ def test_group_roles_requests_and_lifecycle_are_scoped(clients):
     assert owner.delete(f"/api/groups/{group['id']}/participants/{guest.json()['id']}").status_code == 409
     assert owner.patch(f"/api/groups/{group['id']}/billing-requests/{request_id}", json={"status": "COMPLETED"}).status_code == 200
     assert owner.patch(f"/api/groups/{group['id']}/billing-requests/{request_id}", json={"status": "CANCELLED"}).status_code == 409
+    assert owner.delete(f"/api/bills/{event['bills'][0]['id']}").status_code == 204
+    assert owner.delete(f"/api/expenses/{event['id']}").status_code == 204
+    deletable_group = owner.post("/api/groups", json={"name": "Delete me"}).json()
+    assert owner.delete(f"/api/groups/{deletable_group['id']}").status_code == 204
 
     register(outsider, "outsider", "outsider@example.com", "Outsider")
     assert outsider.get(f"/api/groups/{group['id']}/expenses").status_code == 403
