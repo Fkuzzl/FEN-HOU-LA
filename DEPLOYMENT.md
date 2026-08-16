@@ -31,6 +31,11 @@ COOKIE_SECURE=true
 CORS_ORIGINS=https://temporary-host.example
 TRUSTED_HOSTS=temporary-host.example
 RECEIPT_DIR=/private-receipts
+STORAGE_PROVIDER=r2
+R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+R2_ACCESS_KEY_ID=<server-only-access-key>
+R2_SECRET_ACCESS_KEY=<server-only-secret>
+R2_BUCKET=<private-bucket-name>
 ```
 
 ## Release checklist
@@ -38,7 +43,7 @@ RECEIPT_DIR=/private-receipts
 1. Back up the database and confirm one restore in a non-production environment.
 2. Run `alembic upgrade head` and `/api/health` against the new service.
 3. Confirm HTTPS login sets a Secure HttpOnly session cookie.
-4. Confirm no database, backend, or receipt directory is directly public.
+4. Confirm no database, backend, or receipt directory/bucket is directly public. R2 credentials must exist only in backend environment variables.
 5. Run the full local test suite and browser journey before moving DNS.
 6. Keep Cloudflare proxy, TLS, and rate-limiting rules enabled.
 

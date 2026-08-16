@@ -9,6 +9,11 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     trusted_hosts: str = "localhost,127.0.0.1"
     receipt_dir: str = "./receipts"
+    storage_provider: str = "local"
+    r2_endpoint: str | None = None
+    r2_access_key_id: str | None = None
+    r2_secret_access_key: str | None = None
+    r2_bucket: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

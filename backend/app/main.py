@@ -5,7 +5,7 @@ from pathlib import Path
 from secrets import token_urlsafe
 from uuid import uuid4
 from fastapi import Depends, FastAPI, File, HTTPException, Response, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from sqlalchemy import select
@@ -17,12 +17,23 @@ from .models import BillShareConfirmation, BillingRequest, Bill, EventStatus, Ex
 from .schemas import BillingRequestCreate, BillingRequestOut, BillingRequestStatusUpdate, BillOut, EventCreate, EventOut, GroupCreate, GroupInviteOut, GroupMemberOut, GroupOut, LoginIn, ParticipantOut, PersonCreate, RecipientMessagesOut, RegisterIn, SettlementMessageOut, SettlementOut, SettlementTransfer, UserOut
 from .security import current_user, hash_password, make_token, verify_password
 from .split_engine import calculate_split, parse_allocations
-from .storage import LocalPrivateObjectStore
+from .storage import LocalPrivateObjectStore, PrivateObjectStore, R2PrivateObjectStore
 import json
 from time import monotonic
 
 app = FastAPI(title="家庭朋友分帳 API", version="0.1.0")
-receipt_store = LocalPrivateObjectStore(settings.receipt_dir)
+def build_receipt_store() -> PrivateObjectStore:
+    if settings.storage_provider == "local":
+        return LocalPrivateObjectStore(settings.receipt_dir)
+    if settings.storage_provider == "r2":
+        values = (settings.r2_endpoint, settings.r2_access_key_id, settings.r2_secret_access_key, settings.r2_bucket)
+        if not all(values):
+            raise RuntimeError("R2 storage requires R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_BUCKET")
+        return R2PrivateObjectStore(*values)
+    raise RuntimeError("STORAGE_PROVIDER must be local or r2")
+
+
+receipt_store = build_receipt_store()
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_host_list)
 app.add_middleware(CORSMiddleware, allow_origins=settings.cors_list, allow_credentials=True, allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"], allow_headers=["Content-Type", "X-CSRF-Token"])
 _rate_windows: dict[tuple[str, str], deque[float]] = defaultdict(deque)
@@ -55,7 +66,8 @@ def money_text(value: Decimal) -> str:
 
 @app.on_event("startup")
 def startup() -> None:
-    receipt_store.root.mkdir(parents=True, exist_ok=True)
+    if isinstance(receipt_store, LocalPrivateObjectStore):
+        receipt_store.root.mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(bind=engine)
 
 
@@ -428,10 +440,10 @@ def download_receipt(bill_id: str, user: User = Depends(current_user), db: Sessi
         raise HTTPException(status_code=404, detail="找不到此收據")
     event = db.get(ExpenseEvent, bill.event_id)
     member_group(db, event.group_id, user)
-    path = receipt_store.path(bill.receipt_key)
-    if path is None:
+    content = receipt_store.get(bill.receipt_key)
+    if content is None:
         raise HTTPException(status_code=404, detail="收據檔案不存在")
-    return FileResponse(path, media_type=bill.receipt_content_type or "application/octet-stream", filename=bill.receipt_name or bill.receipt_key)
+    return Response(content=content, media_type=bill.receipt_content_type or "application/octet-stream", headers={"Content-Disposition": f'inline; filename="{bill.receipt_name or bill.receipt_key}"'})
 
 
 @app.get("/api/expenses/{event_id}/messages", response_model=RecipientMessagesOut)
