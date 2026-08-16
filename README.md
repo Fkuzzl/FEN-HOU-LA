@@ -20,7 +20,7 @@ $env:PUBLIC_JWT_SECRET = "generate-a-long-random-value"
 docker compose -p expense_splitter_public -f docker-compose.yml -f docker-compose.public.yml up -d --build
 ```
 
-The public override uses a separate PostgreSQL volume, keeps PostgreSQL/Adminer/FastAPI private to the Docker network, and exposes only the frontend on `127.0.0.1:55173`. A Cloudflare Tunnel can then publish that single frontend port. This is for testing; a named tunnel and propagated Cloudflare DNS should be used for a persistent production URL.
+The public override uses a separate PostgreSQL volume, keeps PostgreSQL/Adminer/FastAPI private to the Docker network, and exposes only the frontend on `127.0.0.1:55173`. The current named Cloudflare Tunnel publishes that single frontend port at `https://app.99696699.xyz` (tunnel ID `934056ec-8757-44b7-bbcd-0aa0a57f577b`). Keep the tunnel connector running for the hostname to remain available.
 
 The API is at <http://localhost:8000/docs>. Migrations can be run from `backend/` with `alembic upgrade head`.
 
