@@ -20,6 +20,7 @@ test('register, create a group, add a bill, and review it', async ({ page }) => 
   await page.getByLabel('這次叫什麼？').fill('E2E Lunch');
   await page.getByLabel('金額 HK$').fill('25.50');
   await page.getByLabel('簡單描述').fill('Lunch');
+  await page.getByLabel('收據圖片（可選）').setInputFiles({ name: 'lunch.png', mimeType: 'image/png', buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x45, 0x32, 0x45]) });
   await page.getByRole('button', { name: '繼續分帳 →' }).click();
   await expect(page.getByText('HK$25.50').first()).toBeVisible();
   await page.getByRole('button', { name: '完成並記錄 ✓' }).click();
