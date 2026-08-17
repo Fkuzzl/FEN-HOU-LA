@@ -10,7 +10,10 @@ if (-not $docker) { $docker = @('C:\Program Files\Docker\Docker\resources\bin\do
 if (-not $docker) { throw 'Docker CLI was not found. Start Docker Desktop or add docker.exe to PATH.' }
 if (-not $env:PUBLIC_JWT_SECRET) { $env:PUBLIC_JWT_SECRET = ((New-Guid).Guid + (New-Guid).Guid) }
 $env:PUBLIC_ORIGIN = $PublicOrigin
-$env:PUBLIC_TRUSTED_HOSTS = $TrustedHosts
+# Docker's internal health probe uses localhost; keep it trusted alongside the
+# externally configured hostname without requiring users to remember it.
+$trustedHostValues = @($TrustedHosts -split ',') + @('localhost', '127.0.0.1')
+$env:PUBLIC_TRUSTED_HOSTS = ($trustedHostValues | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Select-Object -Unique) -join ','
 $env:PUBLIC_COOKIE_SECURE = if ($PublicOrigin.StartsWith('https://')) { 'true' } else { 'false' }
 $args = @('-p', 'expense_splitter_public', '-f', (Join-Path $root 'docker-compose.yml'), '-f', (Join-Path $root 'docker-compose.public.yml'), 'up', '-d')
 if ($Build) { $args += '--build' }
