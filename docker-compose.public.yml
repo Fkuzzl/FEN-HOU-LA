@@ -17,6 +17,10 @@ services:
       R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
       R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
       R2_BUCKET: ${R2_BUCKET:-}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_NAME: ${ADMIN_NAME:-Operator}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
 
   frontend:
     ports: !override

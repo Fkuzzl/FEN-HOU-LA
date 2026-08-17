@@ -36,5 +36,6 @@ def current_user(request: Request, db: Session = Depends(get_db)) -> User:
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=401, detail="找不到使用者")
+    if user.is_disabled:
+        raise HTTPException(status_code=403, detail="帳戶已停用")
     return user
-

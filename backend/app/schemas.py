@@ -11,6 +11,41 @@ class UserOut(BaseModel):
     username: str
     name: str
     email: EmailStr
+    is_admin: bool = False
+    is_disabled: bool = False
+
+
+class AdminSummaryOut(BaseModel):
+    users: int
+    groups: int
+    active_groups: int
+    events: int
+    billing_requests: int
+    audit_entries: int
+
+
+class AdminUserOut(UserOut):
+    created_at: datetime
+
+
+class AdminGroupOut(BaseModel):
+    id: str
+    name: str
+    owner_id: str
+    owner_name: str
+    created_at: datetime
+    archived_at: datetime | None
+    event_count: int
+
+
+class AdminAuditOut(BaseModel):
+    id: str
+    admin_id: str
+    action: str
+    target_type: str
+    target_id: str | None
+    detail: str
+    created_at: datetime
 
 
 class RegisterIn(BaseModel):

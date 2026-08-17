@@ -64,3 +64,9 @@ docker compose build
 The current slice supports unique account-name login, owner-controlled groups, named participant roles that do not require accounts, date-only bill entry, equal/fixed-per-bill splits, viewing completed event details, and creating/closing billing requests. Event details can generate an aggregated message for each person who owes money; merged multi-event settlement also generates one copyable transfer message. Each recipient now gets a copyable text message plus a generated PNG payment card that can be shared or downloaded. Groups can create 7-day invite links for registered users, and several completed events can be combined into net transfer suggestions. Bills accept one private local JPG/PNG receipt up to 10 MB; cloud object-storage adapters remain a deployment task. It does not send directly through WhatsApp/WeChat yet.
 
 The participant/ownership schema is introduced by migration `0003_accounts_participants`. For a fresh deployment run `alembic upgrade head` before starting the API. Existing databases must be backed up first; this release intentionally treats the production database as a fresh reset and does not automatically migrate old guest-user records.
+
+## Operator workbench
+
+The optional no-code operator workbench is enabled by setting `ADMIN_USERNAME`, `ADMIN_NAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` in the private `.env` used by Docker. The password is hashed with Argon2 at bootstrap and is never returned by the API. Open the normal application and sign in with that account to access the 管理工作台.
+
+The workbench shows health counts, users, groups, and recent audit entries. It can disable/enable non-admin accounts and archive groups without deleting their financial history. Both actions require an in-app confirmation and create an audit record. Never commit `.env` or share the administrator password.

@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     r2_access_key_id: str | None = None
     r2_secret_access_key: str | None = None
     r2_bucket: str | None = None
+    admin_username: str | None = None
+    admin_name: str = "Operator"
+    admin_email: str | None = None
+    admin_password: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

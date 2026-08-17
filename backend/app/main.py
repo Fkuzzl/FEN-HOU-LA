@@ -8,13 +8,13 @@ from fastapi import Depends, FastAPI, File, HTTPException, Response, UploadFile
 from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from .config import settings
 from .db import Base, engine, get_db
-from .models import BillShareConfirmation, BillingRequest, Bill, EventStatus, ExpenseEvent, Group, GroupInvite, GroupMember, Participant, RequestStatus, User
-from .schemas import BillingRequestCreate, BillingRequestOut, BillingRequestStatusUpdate, BillOut, EventCreate, EventOut, GroupCreate, GroupInviteOut, GroupMemberOut, GroupOut, LoginIn, ParticipantOut, PersonCreate, RecipientMessagesOut, RegisterIn, SettlementMessageOut, SettlementOut, SettlementTransfer, UserOut
+from .models import AdminAuditLog, BillShareConfirmation, BillingRequest, Bill, EventStatus, ExpenseEvent, Group, GroupInvite, GroupMember, Participant, RequestStatus, User
+from .schemas import AdminAuditOut, AdminGroupOut, AdminSummaryOut, AdminUserOut, BillingRequestCreate, BillingRequestOut, BillingRequestStatusUpdate, BillOut, EventCreate, EventOut, GroupCreate, GroupInviteOut, GroupMemberOut, GroupOut, LoginIn, ParticipantOut, PersonCreate, RecipientMessagesOut, RegisterIn, SettlementMessageOut, SettlementOut, SettlementTransfer, UserOut
 from .security import current_user, hash_password, make_token, verify_password
 from .split_engine import calculate_split, parse_allocations
 from .storage import LocalPrivateObjectStore, PrivateObjectStore, R2PrivateObjectStore
@@ -73,10 +73,29 @@ def startup() -> None:
     # PostgreSQL schemas must never be silently altered at application startup.
     if settings.database_url.startswith("sqlite"):
         Base.metadata.create_all(bind=engine)
+    if settings.admin_username and settings.admin_password and settings.admin_email:
+        with Session(engine) as db:
+            admin = db.scalar(select(User).where(User.username == settings.admin_username))
+            if admin is None:
+                admin = User(username=settings.admin_username, name=settings.admin_name, email=settings.admin_email, password_hash=hash_password(settings.admin_password), is_admin=True)
+                db.add(admin)
+            else:
+                admin.is_admin = True
+            db.commit()
 
 
 def cookie(response: Response, user_id: str) -> None:
     response.set_cookie("session", make_token(user_id), httponly=True, samesite="lax", secure=settings.cookie_secure, max_age=settings.jwt_expire_minutes * 60)
+
+
+def admin_user(user: User = Depends(current_user)) -> User:
+    if not user.is_admin:
+        raise HTTPException(status_code=403, detail="只有管理員可以使用工作台")
+    return user
+
+
+def audit(db: Session, admin: User, action: str, target_type: str, target_id: str | None, detail: str = "") -> None:
+    db.add(AdminAuditLog(admin_id=admin.id, action=action, target_type=target_type, target_id=target_id, detail=detail))
 
 
 def member_group(db: Session, group_id: str, user: User) -> Group:
@@ -149,6 +168,59 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/api/admin/summary", response_model=AdminSummaryOut)
+def admin_summary(_: User = Depends(admin_user), db: Session = Depends(get_db)):
+    return AdminSummaryOut(
+        users=db.scalar(select(func.count()).select_from(User)) or 0,
+        groups=db.scalar(select(func.count()).select_from(Group)) or 0,
+        active_groups=db.scalar(select(func.count()).select_from(Group).where(Group.archived_at.is_(None))) or 0,
+        events=db.scalar(select(func.count()).select_from(ExpenseEvent)) or 0,
+        billing_requests=db.scalar(select(func.count()).select_from(BillingRequest)) or 0,
+        audit_entries=db.scalar(select(func.count()).select_from(AdminAuditLog)) or 0,
+    )
+
+
+@app.get("/api/admin/users", response_model=list[AdminUserOut])
+def admin_users(_: User = Depends(admin_user), db: Session = Depends(get_db)):
+    return db.scalars(select(User).order_by(User.created_at.desc())).all()
+
+
+@app.get("/api/admin/groups", response_model=list[AdminGroupOut])
+def admin_groups(_: User = Depends(admin_user), db: Session = Depends(get_db)):
+    groups = db.scalars(select(Group).order_by(Group.created_at.desc())).all()
+    return [AdminGroupOut(id=g.id, name=g.name, owner_id=g.owner_id, owner_name=db.get(User, g.owner_id).name if db.get(User, g.owner_id) else "未知", created_at=g.created_at, archived_at=g.archived_at, event_count=len(g.events)) for g in groups]
+
+
+@app.get("/api/admin/audit-logs", response_model=list[AdminAuditOut])
+def admin_audit_logs(_: User = Depends(admin_user), db: Session = Depends(get_db)):
+    return db.scalars(select(AdminAuditLog).order_by(AdminAuditLog.created_at.desc()).limit(200)).all()
+
+
+@app.patch("/api/admin/users/{user_id}/status", response_model=AdminUserOut)
+def admin_user_status(user_id: str, disabled: bool, admin: User = Depends(admin_user), db: Session = Depends(get_db)):
+    target = db.get(User, user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="找不到使用者")
+    if target.id == admin.id and disabled:
+        raise HTTPException(status_code=409, detail="不能停用目前管理員帳戶")
+    target.is_disabled = disabled
+    audit(db, admin, "DISABLE_USER" if disabled else "ENABLE_USER", "user", target.id, f"disabled={disabled}")
+    db.commit(); db.refresh(target)
+    return target
+
+
+@app.post("/api/admin/groups/{group_id}/archive", response_model=AdminGroupOut)
+def admin_archive_group(group_id: str, admin: User = Depends(admin_user), db: Session = Depends(get_db)):
+    group = db.get(Group, group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="找不到群組")
+    group.archived_at = datetime.now(timezone.utc)
+    audit(db, admin, "ARCHIVE_GROUP", "group", group.id, group.name)
+    db.commit(); db.refresh(group)
+    owner = db.get(User, group.owner_id)
+    return AdminGroupOut(id=group.id, name=group.name, owner_id=group.owner_id, owner_name=owner.name if owner else "未知", created_at=group.created_at, archived_at=group.archived_at, event_count=len(group.events))
+
+
 @app.post("/api/auth/register", response_model=UserOut, status_code=201)
 def register(data: RegisterIn, response: Response, db: Session = Depends(get_db)):
     if db.scalar(select(User).where((User.email == data.email.lower()) | (User.username == data.username.lower()))):
@@ -161,7 +233,7 @@ def register(data: RegisterIn, response: Response, db: Session = Depends(get_db)
 @app.post("/api/auth/login", response_model=UserOut)
 def login(data: LoginIn, response: Response, db: Session = Depends(get_db)):
     user = db.scalar(select(User).where(User.username == data.username.lower()))
-    if not user or not verify_password(data.password, user.password_hash):
+    if not user or not verify_password(data.password, user.password_hash) or user.is_disabled:
         raise HTTPException(status_code=401, detail="帳戶名稱或密碼不正確")
     cookie(response, user.id)
     return user
@@ -191,7 +263,7 @@ def me(user: User = Depends(current_user)):
 
 @app.get("/api/groups", response_model=list[GroupOut])
 def list_groups(user: User = Depends(current_user), db: Session = Depends(get_db)):
-    groups = db.scalars(select(Group).join(GroupMember).where(GroupMember.user_id == user.id).options(joinedload(Group.members).joinedload(GroupMember.user))).unique().all()
+    groups = db.scalars(select(Group).join(GroupMember).where(GroupMember.user_id == user.id, Group.archived_at.is_(None)).options(joinedload(Group.members).joinedload(GroupMember.user))).unique().all()
     return [{"id": g.id, "name": g.name, "owner_id": g.owner_id, "created_at": g.created_at, "members": [{"id": p.id, "name": p.name, "email": p.user.email if p.user else "", "username": p.user.username if p.user else ""} for p in g.participants], "participants": [{"id": p.id, "name": p.name, "user_id": p.user_id, "email": p.user.email if p.user else None} for p in g.participants]} for g in groups]
 
 
