@@ -375,3 +375,52 @@ input:focus, select:focus { border-color: var(--coral); box-shadow: 0 0 0 3px rg
   .mobile-group-item .group-dot { width: 27px; height: 27px; border-radius: 50%; font-size: 11px; }
   .mobile-add-group { padding-inline: 13px; border-style: dashed; color: var(--teal); background: transparent; }
 }
+
+/* Mobile density correction: controls are tools, not hero cards. */
+@media (max-width: 720px) {
+  .content { padding-top: 22px; padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+  .content-heading { gap: 14px; margin-bottom: 18px; }
+  .content-heading > div:first-child { width: 100%; }
+  .content-heading .muted { margin-top: 4px; }
+  .heading-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+    width: 100%;
+  }
+  .heading-actions .secondary,
+  .heading-actions .primary {
+    width: 100%;
+    min-height: 40px;
+    padding: 8px 7px;
+    font-size: 12px;
+    line-height: 1.25;
+    white-space: normal;
+  }
+  .heading-actions .primary { grid-column: 1 / -1; min-height: 46px; font-size: 14px; }
+  .balance-card { min-height: 106px; padding: 15px 16px; }
+  .balance-card h2 { margin: 5px 0 0; }
+  .balance-card p { font-size: 12px; }
+  .balance-card::after { right: 12px; bottom: -30px; font-size: 74px; }
+  .section-heading { margin-top: 28px; }
+  .section-heading > div { min-width: 0; }
+  .section-heading .muted { display: block; margin-top: 3px; line-height: 1.4; }
+  .section-heading .request-button { padding: 7px 9px; min-height: 38px; font-size: 11px; white-space: nowrap; }
+  .event-list { gap: 7px; }
+  .event-card { padding: 11px 10px; gap: 10px; }
+  .event-icon { width: 32px; height: 32px; flex-basis: 32px; font-size: 12px; }
+  .event-main span { font-size: 11px; line-height: 1.35; }
+  .event-amount { font-size: 13px; }
+  .requests-section { margin-top: 26px; }
+  .empty-state { padding: 40px 16px; }
+  .empty-doodle { width: 52px; height: 52px; font-size: 28px; }
+  .empty-state h2 { margin-top: 14px; }
+  .empty-state p { margin-bottom: 16px; }
+}
+
+@media (max-width: 380px) {
+  .heading-actions { gap: 6px; }
+  .heading-actions .secondary { font-size: 11px; }
+  .section-heading { align-items: flex-start; }
+  .section-heading .request-button { margin-top: 1px; }
+}
