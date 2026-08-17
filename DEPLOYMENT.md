@@ -9,7 +9,7 @@ The repository supports two reversible Docker modes. Local mode uses `expense_sp
 .\scripts\stop-all.ps1
 ```
 
-The public-demo container stack has been verified locally. External reachability depends on the separately managed tunnel or proxy.
+The public-demo container stack has been verified locally. External reachability depends on the separately managed tunnel or proxy. The repository includes a temporary Quick Tunnel workflow for verification; use a named, persistent tunnel for anything beyond a short demo.
 
 ## Fresh production database
 
