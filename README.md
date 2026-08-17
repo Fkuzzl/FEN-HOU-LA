@@ -32,10 +32,10 @@ The repository runs locally with Docker and can be exposed through a separately 
 2. Create the private environment file:
 
    ```powershell
-   Copy-Item .env.example .env
+   Copy-Item .env.example .env.local
    ```
 
-   Change `JWT_SECRET` to a long random value. Keep `.env` private; it is ignored by Git. The default local PostgreSQL password is for development only.
+   Change `JWT_SECRET` to a long random value. Keep `.env.local` private; it is ignored by Git. The default local PostgreSQL password is for development only. For backwards compatibility, the script also accepts `.env` when `.env.local` does not exist.
 
 3. Start the complete stack:
 
@@ -72,7 +72,7 @@ This mode remains hosted by your machine; Cloudflare provides the public HTTPS e
    .\scripts\start-public.ps1 -PublicOrigin https://app.example.com -TrustedHosts app.example.com -Build
    ```
 
-Verify `https://app.example.com/api/health`. The script binds the public frontend to localhost only and enables secure cookies for HTTPS. A Quick Tunnel URL is suitable only for short-lived testing; use a persistent connector for a real demo. Never commit tunnel credentials, R2 keys, admin passwords, or `.env` files.
+Verify `https://app.example.com/api/health`. The public script explicitly loads `.env.public` and never reads `.env.local` or `.env`. It binds the public frontend to localhost only and enables secure cookies for HTTPS. A Quick Tunnel URL is suitable only for short-lived testing; use a persistent connector for a real demo. Never commit tunnel credentials, R2 keys, admin passwords, or environment files.
 
 ## Operator workbench
 
