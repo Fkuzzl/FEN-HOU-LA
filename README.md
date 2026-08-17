@@ -1,72 +1,100 @@
-# 分好啦 · Family & Friends Expense Splitter
+# FEN HOU LA — Family & Friends Expense Splitter
 
-A small, responsive Traditional Chinese/HKD expense splitter for family and friends.
+FEN HOU LA (分好啦) is a Traditional Chinese, HKD-first web application for recording shared bills, splitting exact amounts, and creating copy/share payment messages. Participants can be named people without accounts; only the group owner can edit or share financial records. Registered members can view group events and bill details.
 
-## Run locally
+The repository runs locally with Docker and can be exposed through a separately managed Cloudflare Tunnel for a private public demo. It contains no production credentials, user data, or permanent domain.
 
-The supported local Docker path is one command from PowerShell:
+## Features
 
-```powershell
-.\scripts\start-local.ps1 -Build
-```
+- Account-name login with Argon2 password hashing and HttpOnly cookie sessions.
+- Owner-controlled groups, invitations, participant roles, and safe member access.
+- Date-only bills with HKD cent-accurate equal, fixed, and percentage allocations.
+- Completed event history with per-person totals and recipient-specific billing messages.
+- Copyable text and PNG invoice-style cards; browser print/share is client-side.
+- Private JPEG/PNG receipt validation (10 MB limit) through a provider-independent storage boundary.
+- Manual billing-request completion and immutable completed events.
+- No-code operator workbench for account status, group archival, health counts, and audit logs.
 
-Open <http://localhost:5173>. The local project is `expense_splitter_local` and uses the `expense_db` volume. Stop it with `.\scripts\stop-all.ps1`; volumes are preserved.
+## Requirements
 
-For a source-based local test without Docker, start the API with a fresh SQLite file and the Vite frontend:
+- Windows PowerShell (scripts are `.ps1`), Docker Desktop with Compose, and Git.
+- Node.js 22+ and Python 3.12+ only for checks outside containers.
 
-```powershell
-$env:DATABASE_URL = "sqlite:///C:/Code Project/Expense_Splitter/backend/local-test.db"
-$env:JWT_SECRET = "local-only-change-me"
-cd backend
-alembic upgrade head
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-```
+## Local Docker setup
 
-In a second terminal run `cd frontend; npm run dev -- --host 127.0.0.1 --port 5173`, then open <http://localhost:5173>. Registration uses an account name, display name, recovery email, and password. This local test database is separate from the public deployment.
+1. Clone the repository:
 
-For a full containerized stack without rebuilding, run `.\scripts\start-local.ps1`.
+   ```powershell
+   git clone https://github.com/Fkuzzl/FEN-HOU-LA.git
+   cd FEN-HOU-LA
+   ```
 
-## Temporary online demo
+2. Create the private environment file:
 
-The online mode uses the same Docker images but a separate project and database volume. It binds only to localhost; a Cloudflare Tunnel or another proxy is optional and configured outside this repository.
+   ```powershell
+   Copy-Item .env.example .env
+   ```
 
-```powershell
-.\scripts\start-public.ps1 -Build
-```
+   Change `JWT_SECRET` to a long random value. Keep `.env` private; it is ignored by Git. The default local PostgreSQL password is for development only.
 
-By default it opens at <http://localhost:55173> and uses the separate `expense_splitter_public_v2_db` volume. To expose it through a temporary HTTPS tunnel, pass the origin and trusted host explicitly:
+3. Start the complete stack:
 
-```powershell
-.\scripts\start-public.ps1 -PublicOrigin https://your-temporary-host.example -TrustedHosts your-temporary-host.example -Build
-```
+   ```powershell
+   .\scripts\start-local.ps1 -Build
+   ```
 
-The script automatically enables Secure cookies for HTTPS origins. No project file contains a permanent domain name.
+   Open [http://localhost:5173](http://localhost:5173). The API health check is [http://localhost:8000/api/health](http://localhost:8000/api/health). Migrations run automatically for Docker PostgreSQL.
 
-The API is at <http://localhost:8000/docs>. Migrations can be run from `backend/` with `alembic upgrade head`.
+   Stop containers without deleting data:
 
-## Switching modes and data
+   ```powershell
+   .\scripts\stop-all.ps1
+   .\scripts\status.ps1
+   ```
 
-- Local Docker uses PostgreSQL in the `expense_db` volume.
-- Temporary online mode uses PostgreSQL in the separate `expense_splitter_public_v2_db` volume.
-- Switching modes never deletes either volume. Use `.\scripts\status.ps1` to inspect both projects and `.\scripts\stop-all.ps1` to stop both.
-- To inspect the Docker database visually, run `docker compose up -d db db-viewer`, open <http://localhost:8080>, and use system `PostgreSQL`, server `db`, user `expense`, password `expense_dev_password`, database `expense_splitter`.
-- For the SQLite file, use SQLite Browser or any SQLite viewer and open `backend/dev.db`.
+The local database is stored in the Docker volume `expense_db`. To inspect it, run `docker compose up -d db db-viewer` and open [http://localhost:8080](http://localhost:8080). Use server `db`, database `expense_splitter`, user `expense`, and the password from the local compose file. Never expose this viewer publicly.
 
-## Checks
+## Public/demo mode through Cloudflare Tunnel
 
-```text
-cd backend && pytest
-cd frontend && npm run lint && npm run build
-cd frontend && npm run test:e2e  # requires the local API on :8000 and Vite app on :5173
-docker compose build
-```
+This mode remains hosted by your machine; Cloudflare provides the public HTTPS edge. It uses a separate PostgreSQL volume and never reuses local data.
 
-The current slice supports unique account-name login, owner-controlled groups, named participant roles that do not require accounts, date-only bill entry, equal/fixed-per-bill splits, viewing completed event details, and creating/closing billing requests. Event details can generate an aggregated message for each person who owes money; merged multi-event settlement also generates one copyable transfer message. Each recipient now gets a copyable text message plus a generated PNG payment card that can be shared or downloaded. Groups can create 7-day invite links for registered users, and several completed events can be combined into net transfer suggestions. Bills accept one private local JPG/PNG receipt up to 10 MB; cloud object-storage adapters remain a deployment task. It does not send directly through WhatsApp/WeChat yet.
+1. In Cloudflare Zero Trust, create a named tunnel and run its connector on the same machine as Docker.
+2. Add a public hostname such as `app.example.com` and route it to `http://host.docker.internal:55173` (the local binding printed by the script). Keep the database, API port, and Adminer private.
+3. Copy the public environment template and set a fresh secret:
 
-The participant/ownership schema is introduced by migration `0003_accounts_participants`. For a fresh deployment run `alembic upgrade head` before starting the API. Existing databases must be backed up first; this release intentionally treats the production database as a fresh reset and does not automatically migrate old guest-user records.
+   ```powershell
+   Copy-Item .env.public.example .env.public
+   ```
+
+4. Start the isolated public stack:
+
+   ```powershell
+   .\scripts\start-public.ps1 -PublicOrigin https://app.example.com -TrustedHosts app.example.com -Build
+   ```
+
+Verify `https://app.example.com/api/health`. The script binds the public frontend to localhost only and enables secure cookies for HTTPS. A Quick Tunnel URL is suitable only for short-lived testing; use a persistent connector for a real demo. Never commit tunnel credentials, R2 keys, admin passwords, or `.env` files.
 
 ## Operator workbench
 
-The optional no-code operator workbench is enabled by setting `ADMIN_USERNAME`, `ADMIN_NAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` in the private `.env` used by Docker. The password is hashed with Argon2 at bootstrap and is never returned by the API. Open the normal application and sign in with that account to access the 管理工作台.
+Set `ADMIN_USERNAME`, `ADMIN_NAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` in the private environment file before startup. Sign in through the normal application to open the management workbench. It can disable/enable non-admin accounts and archive groups, with confirmation dialogs and immutable audit records. The administrator cannot disable itself. Use a unique random password and rotate it outside the repository.
 
-The workbench shows health counts, users, groups, and recent audit entries. It can disable/enable non-admin accounts and archive groups without deleting their financial history. Both actions require an in-app confirmation and create an audit record. Never commit `.env` or share the administrator password.
+## Development checks
+
+```powershell
+cd backend
+python -m pytest -q --basetemp .pytest-tmp
+cd ..\frontend
+npm.cmd run lint
+npm.cmd run build
+npm.cmd run test:e2e
+```
+
+The E2E flow expects the local API and frontend to be running. CI runs backend, frontend, and E2E checks. See [SECURITY.md](SECURITY.md), [ARCHITECTURE.md](ARCHITECTURE.md), and [DEPLOYMENT.md](DEPLOYMENT.md) for operational details.
+
+## Data and reset warning
+
+Local and public modes intentionally use separate Docker volumes. Removing a volume permanently deletes its database; export or back it up first. A fresh production deployment must start from an empty database and apply all Alembic migrations. Completed financial records are immutable by design.
+
+## License and contributions
+
+This is an experimental open-source project. Do not use it as a payment processor or financial ledger without independent security, backup, and compliance review. Contributions should preserve cent-safe calculations, group authorization boundaries, and secret-free commits.
