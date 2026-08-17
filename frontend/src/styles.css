@@ -172,3 +172,90 @@ input:focus, select:focus { border-color: var(--coral); box-shadow: 0 0 0 3px rg
   .balance-card { border-radius: 4px 16px 16px 4px; }
   .mobile-nav { background: rgba(255,250,241,.94); backdrop-filter: blur(14px); }
 }
+
+/* Responsive scale pass: readable at a desk, usable with one thumb. */
+:focus-visible {
+  outline: 3px solid var(--sun);
+  outline-offset: 3px;
+}
+.app-shell, .flow-shell { overflow-x: clip; }
+.dashboard { grid-template-columns: minmax(214px, 250px) minmax(0, 1fr); }
+.content { max-width: 960px; }
+.section-heading { margin-top: clamp(32px, 5vw, 48px); }
+.dialog { max-height: min(88vh, 760px); overflow-y: auto; scrollbar-width: thin; }
+.close { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%; }
+.close:hover { background: var(--mint); color: var(--ink); }
+.primary, .secondary, .danger-button { min-height: 44px; }
+.text-button { min-height: 40px; }
+.mobile-nav button { min-width: 64px; min-height: 56px; }
+.topbar { position: sticky; top: 0; z-index: 3; }
+.flow-header { position: sticky; top: 0; z-index: 3; }
+.auth-card input { min-height: 48px; }
+.auth-card .primary { min-height: 50px; font-size: 15px; }
+.bill-fields label, .auth-card label { line-height: 1.45; }
+.allocation-grid { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.allocation-input input { min-width: 0; }
+.recipient-card-head { gap: 14px; align-items: baseline; }
+.recipient-card-head b, .event-amount, .details-total strong, .review-total strong { white-space: nowrap; }
+
+@media (min-width: 1180px) {
+  .dashboard { grid-template-columns: 270px minmax(0, 960px); }
+  .sidebar { padding-inline: 28px; }
+  .content { padding-inline: clamp(54px, 6vw, 92px); }
+  .flow-main { max-width: 820px; }
+}
+
+@media (max-width: 720px) {
+  body { font-size: 15px; }
+  .topbar { height: 64px; padding: 0 16px; }
+  .brand { font-size: 20px; }
+  .user-menu { gap: 7px; }
+  .avatar { width: 36px; height: 36px; }
+  .content { padding: 28px 16px calc(104px + env(safe-area-inset-bottom)); }
+  .content-heading { margin-bottom: 22px; }
+  .content h1 { font-size: clamp(31px, 10vw, 42px); line-height: 1.12; }
+  .balance-card { min-height: 128px; padding: 18px; }
+  .balance-card h2 { font-size: clamp(29px, 9vw, 37px); }
+  .balance-mark { font-size: 45px; }
+  .section-heading { gap: 9px; margin-bottom: 12px; }
+  .section-heading h2 { font-size: 18px; }
+  .event-card { align-items: flex-start; padding: 14px 12px; }
+  .event-icon { flex: 0 0 36px; }
+  .event-amount { margin-left: auto; padding-top: 6px; font-size: 14px; }
+  .event-main { min-width: 0; }
+  .event-main strong { overflow-wrap: anywhere; }
+  .overlay { align-items: end; padding: 10px; }
+  .dialog { padding: 25px 18px calc(20px + env(safe-area-inset-bottom)); border-radius: 18px 18px 8px 8px; max-height: 92vh; }
+  .dialog h2 { padding-right: 35px; font-size: 23px; }
+  .details-dialog { width: 100%; }
+  .details-total { padding: 15px 16px; }
+  .detail-bill { padding: 13px; grid-template-columns: minmax(0, 1fr) auto; }
+  .detail-shares span { padding: 7px 9px; }
+  .details-actions { position: sticky; bottom: -1px; z-index: 1; margin-inline: -18px; padding: 12px 18px calc(10px + env(safe-area-inset-bottom)); background: rgba(255,250,241,.94); backdrop-filter: blur(10px); }
+  .flow-header { height: 60px; padding: 0 16px; }
+  .flow-main { padding: 30px 14px calc(82px + env(safe-area-inset-bottom)); }
+  .flow-intro { margin-bottom: 24px; }
+  .flow-intro h1 { font-size: clamp(32px, 10vw, 45px); line-height: 1.12; }
+  .bill-editor { padding: 14px 12px; }
+  .bill-fields { min-width: 0; }
+  .remove-bill { top: 12px; right: 10px; min-height: 40px; padding: 8px; }
+  .add-bill { min-height: 48px; }
+  .flow-footer { position: sticky; bottom: 0; z-index: 2; margin-inline: -14px; padding: 12px 14px calc(10px + env(safe-area-inset-bottom)); background: rgba(255,250,241,.95); backdrop-filter: blur(12px); }
+  .flow-footer strong { font-size: 20px; }
+  .flow-footer .primary, .flow-footer .secondary { min-height: 46px; }
+  .allocation-grid { grid-template-columns: 1fr; }
+  .recipient-card { padding: 13px; }
+  .recipient-card-head { font-size: 15px; }
+  .recipient-actions button { min-height: 42px; }
+}
+
+@media (max-width: 380px) {
+  .content, .flow-main { padding-inline: 12px; }
+  .content-heading .primary { width: 100%; }
+  .balance-card { padding: 16px 14px; }
+  .balance-mark { display: none; }
+  .bill-row { gap: 10px; }
+  .flow-footer { margin-inline: -12px; padding-inline: 12px; }
+  .flow-footer > div { min-width: 92px; }
+  .flow-footer .primary, .flow-footer .secondary { padding-inline: 6px; font-size: 13px; }
+}
