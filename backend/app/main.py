@@ -271,7 +271,7 @@ def delete_group(group_id: str, user: User = Depends(current_user), db: Session 
 
 @app.get("/api/groups/{group_id}/expenses", response_model=list[EventOut])
 def list_expenses(group_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    owner_group(db, group_id, user)
+    member_group(db, group_id, user)
     events = db.scalars(select(ExpenseEvent).where(ExpenseEvent.group_id == group_id, ExpenseEvent.status == EventStatus.COMPLETED).options(joinedload(ExpenseEvent.bills).joinedload(Bill.participants))).unique().all()
     return [event_view(event) for event in events]
 
@@ -323,7 +323,7 @@ def get_expense(event_id: str, user: User = Depends(current_user), db: Session =
     event = db.scalar(select(ExpenseEvent).where(ExpenseEvent.id == event_id).options(joinedload(ExpenseEvent.bills).joinedload(Bill.participants)))
     if not event:
         raise HTTPException(status_code=404, detail="找不到此開支")
-    owner_group(db, event.group_id, user)
+    member_group(db, event.group_id, user)
     return event_view(event)
 
 
@@ -439,7 +439,7 @@ def download_receipt(bill_id: str, user: User = Depends(current_user), db: Sessi
     if not bill or not bill.receipt_key:
         raise HTTPException(status_code=404, detail="找不到此收據")
     event = db.get(ExpenseEvent, bill.event_id)
-    owner_group(db, event.group_id, user)
+    member_group(db, event.group_id, user)
     content = receipt_store.get(bill.receipt_key)
     if content is None:
         raise HTTPException(status_code=404, detail="收據檔案不存在")

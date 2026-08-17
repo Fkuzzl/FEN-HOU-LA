@@ -50,8 +50,8 @@ def test_group_roles_requests_and_lifecycle_are_scoped(clients):
     assert expense.status_code == 201, expense.text
     event = expense.json()
     assert Decimal(event["bills"][0]["shares"][guest.json()["id"]]) == Decimal("50.00")
-    assert member.get(f"/api/expenses/{event['id']}").status_code == 403
-    assert member.get(f"/api/groups/{group['id']}/expenses").status_code == 403
+    assert member.get(f"/api/expenses/{event['id']}").status_code == 200
+    assert member.get(f"/api/groups/{group['id']}/expenses").status_code == 200
     assert member.get(f"/api/groups/{group['id']}/settlement").status_code == 403
     assert member.get(f"/api/groups/{group['id']}/settlement/message").status_code == 403
     assert member.get(f"/api/expenses/{event['id']}/message").status_code == 403
@@ -118,8 +118,7 @@ def test_receipt_upload_download_and_empty_file_validation(clients):
     png = b"\x89PNG\r\n\x1a\n" + b"minimal-test-image"
     uploaded = owner.post(f"/api/bills/{bill_id}/receipt", files={"file": ("lunch.png", png, "image/png")})
     assert uploaded.status_code == 200
-    assert member.get(f"/api/bills/{bill_id}/receipt").status_code == 403
-    downloaded = owner.get(f"/api/bills/{bill_id}/receipt")
+    downloaded = member.get(f"/api/bills/{bill_id}/receipt")
     assert downloaded.status_code == 200
     assert downloaded.headers["content-type"] == "image/png"
     assert downloaded.content == png
