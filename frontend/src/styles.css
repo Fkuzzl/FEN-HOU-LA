@@ -259,3 +259,78 @@ input:focus, select:focus { border-color: var(--coral); box-shadow: 0 0 0 3px rg
   .flow-footer > div { min-width: 92px; }
   .flow-footer .primary, .flow-footer .secondary { padding-inline: 6px; font-size: 13px; }
 }
+
+/* Cohesion pass: make every state speak the same visual language. */
+.auth-shell {
+  background: var(--paper);
+  position: relative;
+  isolation: isolate;
+}
+.auth-shell::before {
+  content: 'FHL / 01';
+  position: absolute;
+  right: 4vw;
+  top: 28px;
+  color: rgba(13, 85, 83, .3);
+  font: 11px var(--font-data);
+  letter-spacing: .14em;
+  z-index: 2;
+}
+.auth-aside {
+  background:
+    linear-gradient(160deg, rgba(243,191,98,.18), transparent 35%),
+    var(--teal-deep);
+}
+.auth-aside::before {
+  content: '分帳 · SHARE · 01';
+  position: absolute;
+  left: clamp(40px, 8vw, 120px);
+  bottom: 34px;
+  color: rgba(255,255,255,.45);
+  font: 10px var(--font-data);
+  letter-spacing: .16em;
+}
+.auth-aside h1 { text-wrap: balance; }
+.receipt-art { border-left: 4px solid var(--coral); }
+.auth-card { gap: 16px; }
+.auth-card h2 { font-size: clamp(30px, 3vw, 38px); }
+.auth-card .muted { margin: -5px 0 8px; }
+.auth-card label { gap: 7px; }
+.error {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  line-height: 1.5;
+  box-shadow: inset 3px 0 var(--coral);
+}
+.error::before { content: '!'; flex: 0 0 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; background: var(--coral); color: white; font: 700 12px var(--font-data); }
+.loading { background: var(--paper); font-family: var(--font-display); font-size: 18px; }
+.loading::after { content: '···'; display: block; color: var(--coral); letter-spacing: .32em; font: 700 20px var(--font-data); animation: loading-dots 1.2s steps(3, end) infinite; }
+@keyframes loading-dots { 0%, 20% { opacity: .25; } 50% { opacity: 1; } 80%, 100% { opacity: .25; } }
+.section-heading .muted { font-size: 12px; }
+.request-card { min-height: 64px; }
+.request-card .text-button { min-height: 40px; white-space: nowrap; }
+.empty-state { border: 1px dashed rgba(13,85,83,.25); border-radius: 4px 18px 18px 4px; background: rgba(255,255,255,.32); }
+.empty-doodle { border-radius: 12px 12px 4px 12px; box-shadow: 8px 8px 0 rgba(217,111,76,.16); }
+.dialog > .eyebrow { padding-right: 35px; }
+.dialog > p.muted { line-height: 1.7; }
+.people-list, .settlement-events { scrollbar-color: var(--teal) transparent; }
+.people-list input[type='checkbox'], .settlement-events input[type='checkbox'], .share-check input[type='checkbox'] { accent-color: var(--teal); width: 18px; height: 18px; }
+.share-check { flex-direction: row; align-items: center; gap: 7px; font-size: inherit; font-weight: inherit; }
+.share-check input { flex: 0 0 auto; }
+.message-preview { color: var(--ink); }
+
+@media (max-width: 720px) {
+  .auth-shell::before { top: 18px; right: 18px; }
+  .auth-aside { min-height: 370px; }
+  .auth-aside::before { left: 25px; bottom: 18px; }
+  .auth-aside h1 { margin-top: 42px; }
+  .receipt-art { margin-top: 48px; }
+  .auth-card { gap: 14px; }
+  .auth-card .text-button { padding-block: 12px; }
+  .request-card { align-items: flex-start; flex-wrap: wrap; }
+  .request-card .event-main { min-width: calc(100% - 54px); }
+  .request-card .event-amount { margin-left: 46px; padding-top: 0; }
+  .request-card .text-button { margin-left: auto; }
+  .empty-state { padding: 58px 18px; }
+}
