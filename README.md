@@ -52,7 +52,7 @@ The repository runs locally with Docker and can be exposed through a separately 
    .\scripts\status.ps1
    ```
 
-The local database is stored in the Docker volume `expense_db`. To inspect it, run `docker compose up -d db db-viewer` and open [http://localhost:8080](http://localhost:8080). Use server `db`, database `expense_splitter`, user `expense`, and the password from the local compose file. Never expose this viewer publicly.
+The local database is stored in the Docker volume `expense_db`. To inspect it, run `docker compose --env-file .env.local up -d db db-viewer` and open [http://localhost:8080](http://localhost:8080). Use server `db`, database `expense_splitter`, user `expense`, and the password from the local compose file. Never expose this viewer publicly.
 
 ## Public/demo mode through Cloudflare Tunnel
 
@@ -73,6 +73,32 @@ This mode remains hosted by your machine; Cloudflare provides the public HTTPS e
    ```
 
 Verify `https://app.example.com/api/health`. The public script explicitly loads `.env.public` and never reads `.env.local` or `.env`. It binds the public frontend to localhost only and enables secure cookies for HTTPS. A Quick Tunnel URL is suitable only for short-lived testing; use a persistent connector for a real demo. Never commit tunnel credentials, R2 keys, admin passwords, or environment files.
+
+## Cloudflare R2 receipts
+
+Local mode defaults to `STORAGE_PROVIDER=local`; receipts stay in the backend's private local storage and are not public URLs. Public mode supports a private R2 bucket. R2 is optional for a basic demo, but required if public receipt uploads must survive container replacement.
+
+1. In Cloudflare, open **R2 Object Storage → Create bucket** and create a private bucket, such as `fen-hou-la-receipts-public`. Do not enable public bucket access.
+2. Open **R2 → Manage R2 API Tokens → Create API token**. Grant **Object Read & Write** only for this bucket. Copy the access key ID and secret once; the secret cannot be recovered later.
+3. Use this S3-compatible endpoint:
+
+   ```text
+   https://<cloudflare-account-id>.r2.cloudflarestorage.com
+   ```
+
+4. Put the values only in the private `.env.public` file:
+
+   ```text
+   STORAGE_PROVIDER=r2
+   R2_ENDPOINT=https://<cloudflare-account-id>.r2.cloudflarestorage.com
+   R2_ACCESS_KEY_ID=<server-only-access-key>
+   R2_SECRET_ACCESS_KEY=<server-only-secret>
+   R2_BUCKET=fen-hou-la-receipts-public
+   ```
+
+   The backend uses these credentials server-side through its storage adapter; they are never sent to the browser. Use a separate bucket and token for local R2 testing, or leave local storage enabled.
+
+5. Restart public mode and test one editable event receipt. Verify an authorized group member can download it and that the bucket has no public URL access.
 
 ## Operator workbench
 

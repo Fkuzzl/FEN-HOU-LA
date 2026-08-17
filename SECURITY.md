@@ -15,6 +15,6 @@
 2. Set `COOKIE_SECURE=true`, explicit `CORS_ORIGINS`, and explicit `TRUSTED_HOSTS` for the public hostname.
 3. Use PostgreSQL with automated backups. Do not expose its port or an admin UI publicly.
 4. Put the frontend/API behind HTTPS and Cloudflare proxying. Restrict the host firewall to the reverse proxy.
-5. Move receipts to a private object-storage adapter before relying on hosted uploads; the current local receipt directory is only suitable for local testing.
+5. For hosted uploads, set `STORAGE_PROVIDER=r2` and use a private R2 bucket with a bucket-scoped Object Read & Write token. Keep all R2 values in the backend environment only. `STORAGE_PROVIDER=local` and the local receipt directory are suitable for local testing, not a replaceable public host.
 
 Password recovery is intentionally operator-managed. Do not add a reset endpoint until an authenticated email delivery provider and an audit trail are configured.

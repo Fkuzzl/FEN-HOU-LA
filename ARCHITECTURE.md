@@ -6,4 +6,4 @@ PostgreSQL is the local and production relational store. Amounts use `DECIMAL(12
 
 Group-only friends are represented as non-login contact identities in the group membership table. Their generated contact email is not exposed as an account credential; the UI labels them as friends and lets them participate in bill splits. Billing requests are separate records with pending, completed, and cancelled states.
 
-Receipt metadata is stored on bills now; an object-storage adapter for private R2 uploads is planned for the next phase.
+Receipt metadata is stored on bills. The provider-independent storage boundary supports private local files for development and Cloudflare R2's S3-compatible API for public/production deployments. The browser receives receipts only through an authorized API response; R2 credentials remain server-only and buckets should not be public.
