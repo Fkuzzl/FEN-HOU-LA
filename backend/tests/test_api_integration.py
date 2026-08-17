@@ -50,11 +50,21 @@ def test_group_roles_requests_and_lifecycle_are_scoped(clients):
     assert expense.status_code == 201, expense.text
     event = expense.json()
     assert Decimal(event["bills"][0]["shares"][guest.json()["id"]]) == Decimal("50.00")
-    assert member.get(f"/api/expenses/{event['id']}").status_code == 200
+    assert member.get(f"/api/expenses/{event['id']}").status_code == 403
+    assert member.get(f"/api/groups/{group['id']}/expenses").status_code == 403
+    assert member.get(f"/api/groups/{group['id']}/settlement").status_code == 403
+    assert member.get(f"/api/groups/{group['id']}/settlement/message").status_code == 403
+    assert member.get(f"/api/expenses/{event['id']}/message").status_code == 403
+    assert member.get(f"/api/expenses/{event['id']}/messages").status_code == 403
 
     billing_request = owner.post(f"/api/groups/{group['id']}/billing-requests", json={"participant_id": guest.json()["id"], "amount": "50.00", "note": "晚飯", "event_id": event["id"]})
     assert billing_request.status_code == 201, billing_request.text
     request_id = billing_request.json()["id"]
+    assert member.get(f"/api/groups/{group['id']}/billing-requests").status_code == 403
+    assert member.post(f"/api/groups/{group['id']}/billing-requests", json={"participant_id": guest.json()["id"], "amount": "50.00", "note": "forbidden"}).status_code == 403
+    assert member.patch(f"/api/bills/{event['bills'][0]['id']}/shares/{guest.json()['id']}?confirmed=true").status_code == 403
+    assert member.delete(f"/api/bills/{event['bills'][0]['id']}").status_code == 403
+    assert member.delete(f"/api/expenses/{event['id']}").status_code == 403
     share_update = owner.patch(f"/api/bills/{event['bills'][0]['id']}/shares/{guest.json()['id']}?confirmed=true")
     assert share_update.status_code == 200
     assert guest.json()["id"] in share_update.json()["confirmed_participant_ids"]
@@ -108,7 +118,8 @@ def test_receipt_upload_download_and_empty_file_validation(clients):
     png = b"\x89PNG\r\n\x1a\n" + b"minimal-test-image"
     uploaded = owner.post(f"/api/bills/{bill_id}/receipt", files={"file": ("lunch.png", png, "image/png")})
     assert uploaded.status_code == 200
-    downloaded = member.get(f"/api/bills/{bill_id}/receipt")
+    assert member.get(f"/api/bills/{bill_id}/receipt").status_code == 403
+    downloaded = owner.get(f"/api/bills/{bill_id}/receipt")
     assert downloaded.status_code == 200
     assert downloaded.headers["content-type"] == "image/png"
     assert downloaded.content == png

@@ -22,3 +22,19 @@
 \n+.settlement-dialog{max-width:520px}.settlement-events{display:grid;gap:8px;max-height:260px;overflow:auto}.settlement-events label{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--line);border-radius:9px;background:#fbfcf9}.settlement-events label span{display:flex;flex-direction:column;gap:3px;font-size:13px}.settlement-events small{font-size:11px;color:var(--muted)}.settlement-result{margin-top:16px;border-top:1px solid var(--line);padding-top:15px}.transfer-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);font-size:14px}.transfer-row strong{font:15px 'DM Mono';color:var(--teal)}
 :root{--paper:#fffdf7;--ink:#123f42;--teal:#0f5554;--mint:#dceee9;--line:#d6e0dc;--muted:#607773;--coral:#c86d4c}
 .confirm-card{max-width:420px}.toast{position:fixed;right:24px;bottom:24px;z-index:20;background:var(--teal);color:white;padding:14px 18px;border-radius:10px;box-shadow:0 8px 24px #123f4233;font-weight:700}
+.member-view .heading-actions,
+.member-view .request-button,
+.member-view .mobile-nav,
+.member-view .details-dialog .detail-shares,
+.member-view .details-dialog .receipt-link,
+.member-view .details-dialog .danger-button,
+.member-view .details-dialog .details-actions .secondary:not(.full),
+.member-view .details-dialog .recipient-messages,
+.heading-actions.read-only,
+.mobile-nav.read-only,
+.request-button.read-only,
+.details-dialog.read-only .detail-shares,
+.details-dialog.read-only .receipt-link,
+.details-dialog.read-only .danger-button,
+.details-dialog.read-only .details-actions .secondary:not(.full),
+.details-dialog.read-only .recipient-messages { display: none; }

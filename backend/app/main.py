@@ -271,14 +271,14 @@ def delete_group(group_id: str, user: User = Depends(current_user), db: Session 
 
 @app.get("/api/groups/{group_id}/expenses", response_model=list[EventOut])
 def list_expenses(group_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    member_group(db, group_id, user)
+    owner_group(db, group_id, user)
     events = db.scalars(select(ExpenseEvent).where(ExpenseEvent.group_id == group_id, ExpenseEvent.status == EventStatus.COMPLETED).options(joinedload(ExpenseEvent.bills).joinedload(Bill.participants))).unique().all()
     return [event_view(event) for event in events]
 
 
 @app.get("/api/groups/{group_id}/settlement", response_model=SettlementOut)
 def group_settlement(group_id: str, event_ids: str | None = None, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    member_group(db, group_id, user)
+    owner_group(db, group_id, user)
     requested = [item for item in (event_ids or "").split(",") if item]
     query = select(ExpenseEvent).where(ExpenseEvent.group_id == group_id, ExpenseEvent.status == EventStatus.COMPLETED).options(joinedload(ExpenseEvent.bills).joinedload(Bill.participants))
     if requested:
@@ -291,7 +291,7 @@ def group_settlement(group_id: str, event_ids: str | None = None, user: User = D
 
 @app.get("/api/groups/{group_id}/settlement/message", response_model=SettlementMessageOut)
 def group_settlement_message(group_id: str, event_ids: str | None = None, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    member_group(db, group_id, user)
+    owner_group(db, group_id, user)
     requested = [item for item in (event_ids or "").split(",") if item]
     query = select(ExpenseEvent).where(ExpenseEvent.group_id == group_id, ExpenseEvent.status == EventStatus.COMPLETED).options(joinedload(ExpenseEvent.bills).joinedload(Bill.participants))
     if requested:
@@ -323,7 +323,7 @@ def get_expense(event_id: str, user: User = Depends(current_user), db: Session =
     event = db.scalar(select(ExpenseEvent).where(ExpenseEvent.id == event_id).options(joinedload(ExpenseEvent.bills).joinedload(Bill.participants)))
     if not event:
         raise HTTPException(status_code=404, detail="找不到此開支")
-    member_group(db, event.group_id, user)
+    owner_group(db, event.group_id, user)
     return event_view(event)
 
 
@@ -372,7 +372,7 @@ def expense_message(event_id: str, user: User = Depends(current_user), db: Sessi
     event = db.scalar(select(ExpenseEvent).where(ExpenseEvent.id == event_id).options(joinedload(ExpenseEvent.bills).joinedload(Bill.participants)))
     if not event:
         raise HTTPException(status_code=404, detail="找不到此開支")
-    member_group(db, event.group_id, user)
+    owner_group(db, event.group_id, user)
     view = event_view(event)
     members = db.scalars(select(Participant).where(Participant.group_id == event.group_id)).all()
     names = {participant.id: participant.name for participant in members}
@@ -392,7 +392,7 @@ async def upload_receipt(bill_id: str, file: UploadFile = File(...), user: User 
     if not bill:
         raise HTTPException(status_code=404, detail="找不到此單據")
     event = db.get(ExpenseEvent, bill.event_id)
-    member_group(db, event.group_id, user)
+    owner_group(db, event.group_id, user)
     if event.payer_id != user.id:
         raise HTTPException(status_code=403, detail="只有付款人可以上載收據")
     allowed = {"image/jpeg": ".jpg", "image/png": ".png"}
@@ -439,7 +439,7 @@ def download_receipt(bill_id: str, user: User = Depends(current_user), db: Sessi
     if not bill or not bill.receipt_key:
         raise HTTPException(status_code=404, detail="找不到此收據")
     event = db.get(ExpenseEvent, bill.event_id)
-    member_group(db, event.group_id, user)
+    owner_group(db, event.group_id, user)
     content = receipt_store.get(bill.receipt_key)
     if content is None:
         raise HTTPException(status_code=404, detail="收據檔案不存在")
@@ -451,7 +451,7 @@ def expense_recipient_messages(event_id: str, user: User = Depends(current_user)
     event = db.scalar(select(ExpenseEvent).where(ExpenseEvent.id == event_id).options(joinedload(ExpenseEvent.bills).joinedload(Bill.participants)))
     if not event:
         raise HTTPException(status_code=404, detail="找不到此開支")
-    member_group(db, event.group_id, user)
+    owner_group(db, event.group_id, user)
     view = event_view(event)
     members = db.scalars(select(Participant).where(Participant.group_id == event.group_id)).all()
     names = {member.id: member.name for member in members}
@@ -485,7 +485,7 @@ def expense_recipient_messages(event_id: str, user: User = Depends(current_user)
 
 @app.get("/api/groups/{group_id}/billing-requests", response_model=list[BillingRequestOut])
 def list_billing_requests(group_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    member_group(db, group_id, user)
+    owner_group(db, group_id, user)
     return db.scalars(select(BillingRequest).where(BillingRequest.group_id == group_id).order_by(BillingRequest.created_at.desc())).all()
 
 
