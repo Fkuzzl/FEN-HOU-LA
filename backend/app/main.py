@@ -68,7 +68,11 @@ def money_text(value: Decimal) -> str:
 def startup() -> None:
     if isinstance(receipt_store, LocalPrivateObjectStore):
         receipt_store.root.mkdir(parents=True, exist_ok=True)
-    Base.metadata.create_all(bind=engine)
+    # Production containers run `alembic upgrade head` before Uvicorn starts.
+    # Keep SQLite table creation only for the dependency-light test harness;
+    # PostgreSQL schemas must never be silently altered at application startup.
+    if settings.database_url.startswith("sqlite"):
+        Base.metadata.create_all(bind=engine)
 
 
 def cookie(response: Response, user_id: str) -> None:
