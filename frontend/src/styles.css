@@ -39,3 +39,136 @@
 .details-dialog.read-only .danger-button,
 .details-dialog.read-only .details-actions .secondary:not(.full),
 .details-dialog.read-only .recipient-messages { display: none; }
+
+/* Distinctive visual system: a warm Hong Kong receipt ledger. */
+:root {
+  --font-display: 'Noto Serif TC', 'Songti TC', 'PMingLiU', serif;
+  --font-body: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+  --font-data: 'DM Mono', 'SFMono-Regular', Consolas, monospace;
+  --paper: #fffaf1;
+  --paper-deep: #f2eadc;
+  --ink: #123b3d;
+  --teal: #0d5553;
+  --teal-deep: #083b3b;
+  --mint: #d7ebe3;
+  --coral: #d96f4c;
+  --sun: #f3bf62;
+  --line: #d7dcd3;
+  --muted: #647773;
+  --shadow-soft: 0 16px 42px rgba(18, 59, 61, .09);
+}
+
+html { background: var(--paper); }
+body {
+  font-family: var(--font-body);
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(243, 191, 98, .14), transparent 26rem),
+    linear-gradient(135deg, rgba(13, 85, 83, .035) 25%, transparent 25%) 0 0 / 22px 22px,
+    var(--paper);
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: .22;
+  background-image: radial-gradient(rgba(18, 59, 61, .14) .7px, transparent .7px);
+  background-size: 17px 17px;
+  mask-image: linear-gradient(to bottom, black, transparent 85%);
+}
+h1, h2, h3, .brand, .auth-aside h1, .flow-intro h1, .content h1 { font-family: var(--font-display); }
+.eyebrow, .flow-steps, .bill-number, .event-amount, .balance-card h2,
+.flow-footer strong, .review-total strong, .details-total strong,
+.detail-shares b, .recipient-lines, .transfer-row strong { font-family: var(--font-data); }
+
+.topbar, .flow-header {
+  background: rgba(255, 250, 241, .9);
+  backdrop-filter: blur(14px);
+}
+.brand { letter-spacing: -.1em; }
+.brand::before { content: '▰'; color: var(--sun); font-family: var(--font-body); font-size: 14px; margin-right: 8px; }
+.sidebar { background: rgba(242, 234, 220, .38); }
+.group-item { transition: transform .18s ease, background .18s ease; }
+.group-item:hover { transform: translateX(3px); background: rgba(215, 235, 227, .72); }
+.group-item.active { box-shadow: inset 3px 0 var(--coral); }
+.group-dot { border-radius: 9px 9px 3px 9px; background: var(--teal-deep); }
+.content { position: relative; }
+.content::before {
+  content: '生活記帳簿';
+  position: absolute;
+  right: clamp(20px, 5vw, 76px);
+  top: 32px;
+  color: rgba(13, 85, 83, .16);
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: .18em;
+  writing-mode: vertical-rl;
+}
+.content-heading { position: relative; }
+.content h1, .flow-intro h1 { text-wrap: balance; }
+.balance-card {
+  border-radius: 4px 18px 18px 4px;
+  background: linear-gradient(120deg, var(--teal-deep), var(--teal));
+  box-shadow: var(--shadow-soft);
+  position: relative;
+  overflow: hidden;
+}
+.balance-card::after {
+  content: 'HKD';
+  position: absolute;
+  right: 24px;
+  bottom: -23px;
+  color: rgba(255,255,255,.08);
+  font: 92px var(--font-data);
+  letter-spacing: -.12em;
+}
+.balance-card > * { position: relative; z-index: 1; }
+.balance-mark { color: var(--sun); opacity: .8; }
+.event-card, .bill-editor, .review-stack, .split-preview, .detail-bill, .recipient-card {
+  border-radius: 4px 14px 14px 4px;
+  box-shadow: 0 5px 18px rgba(18, 59, 61, .045);
+}
+.event-card { border-left: 4px solid var(--coral); transition: transform .18s ease, box-shadow .18s ease; }
+.event-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-soft); }
+.event-icon { border-radius: 9px 9px 3px 9px; background: #f8d2b7; }
+.primary { background: var(--teal); box-shadow: 0 4px 0 var(--teal-deep); }
+.secondary { background: rgba(255,255,255,.66); }
+.primary, .secondary, .add-bill, .member-pills button { transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease; }
+.primary:hover, .secondary:hover { border-color: var(--coral); }
+input, select, .money-input { border-radius: 4px 10px 10px 4px; background: rgba(255,255,255,.82); }
+input:focus, select:focus { border-color: var(--coral); box-shadow: 0 0 0 3px rgba(217,111,76,.18); }
+.bill-editor { background: rgba(255,255,255,.5); }
+.bill-number { color: var(--coral); font-weight: 500; }
+.member-pills button.selected { background: var(--mint); border-color: var(--teal); box-shadow: inset 0 -2px var(--teal); }
+.details-total, .review-total { border-radius: 4px 14px 14px 4px; background: var(--mint); }
+.request-card { border-left: 4px solid var(--sun); }
+.toast { border-radius: 4px 12px 12px 4px; box-shadow: var(--shadow-soft); }
+.member-view .content::after {
+  content: '只讀檢視';
+  position: absolute;
+  top: 30px;
+  right: clamp(20px, 5vw, 76px);
+  padding: 5px 9px;
+  border: 1px solid rgba(13,85,83,.22);
+  border-radius: 999px;
+  color: var(--teal);
+  background: rgba(215,235,227,.72);
+  font-size: 11px;
+  letter-spacing: .08em;
+}
+
+@keyframes ledger-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.content > *, .flow-main > * { animation: ledger-rise .45s ease both; }
+.content > *:nth-child(2), .flow-main > *:nth-child(2) { animation-delay: .06s; }
+.content > *:nth-child(3), .flow-main > *:nth-child(3) { animation-delay: .12s; }
+.content > *:nth-child(4), .flow-main > *:nth-child(4) { animation-delay: .18s; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+@media (max-width: 720px) {
+  .content::before, .member-view .content::after { display: none; }
+  .content-heading { padding-top: 8px; }
+  .balance-card { border-radius: 4px 16px 16px 4px; }
+  .mobile-nav { background: rgba(255,250,241,.94); backdrop-filter: blur(14px); }
+}
