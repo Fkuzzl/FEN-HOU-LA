@@ -319,6 +319,7 @@ input:focus, select:focus { border-color: var(--coral); box-shadow: 0 0 0 3px rg
 .share-check { flex-direction: row; align-items: center; gap: 7px; font-size: inherit; font-weight: inherit; }
 .share-check input { flex: 0 0 auto; }
 .message-preview { color: var(--ink); }
+.mobile-groupbar { display: none; }
 
 @media (max-width: 720px) {
   .auth-shell::before { top: 18px; right: 18px; }
@@ -333,4 +334,44 @@ input:focus, select:focus { border-color: var(--coral); box-shadow: 0 0 0 3px rg
   .request-card .event-amount { margin-left: 46px; padding-top: 0; }
   .request-card .text-button { margin-left: auto; }
   .empty-state { padding: 58px 18px; }
+  .mobile-groupbar {
+    display: block;
+    position: sticky;
+    top: 64px;
+    z-index: 2;
+    padding: 10px 16px 9px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(255,250,241,.94);
+    backdrop-filter: blur(12px);
+  }
+  .mobile-group-scroll {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+    padding: 1px 1px 3px;
+  }
+  .mobile-group-scroll::-webkit-scrollbar { display: none; }
+  .mobile-group-item, .mobile-add-group {
+    min-height: 42px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 12px 6px 7px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255,255,255,.72);
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .mobile-group-item.active {
+    border-color: var(--teal);
+    background: var(--mint);
+    box-shadow: inset 0 -2px var(--teal);
+  }
+  .mobile-group-item .group-dot { width: 27px; height: 27px; border-radius: 50%; font-size: 11px; }
+  .mobile-add-group { padding-inline: 13px; border-style: dashed; color: var(--teal); background: transparent; }
 }
