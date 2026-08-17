@@ -193,7 +193,23 @@ def admin_groups(_: User = Depends(admin_user), db: Session = Depends(get_db)):
 
 @app.get("/api/admin/audit-logs", response_model=list[AdminAuditOut])
 def admin_audit_logs(_: User = Depends(admin_user), db: Session = Depends(get_db)):
-    return db.scalars(select(AdminAuditLog).order_by(AdminAuditLog.created_at.desc()).limit(200)).all()
+    entries = db.scalars(select(AdminAuditLog).order_by(AdminAuditLog.created_at.desc()).limit(200)).all()
+    result = []
+    for item in entries:
+        detail = item.detail or ""
+        # Normalize legacy status entries written before audit details were expanded.
+        if item.target_type == "user" and detail in {"disabled=True", "disabled=False"}:
+            target = db.get(User, item.target_id) if item.target_id else None
+            status = "已停用" if detail == "disabled=True" else "已啟用"
+            detail = (f"帳戶：{target.name} (@{target.username})；狀態：{status}" if target
+                      else f"目標帳戶 ID：{item.target_id or '未知'}；狀態：{status}")
+        admin = db.get(User, item.admin_id)
+        result.append(AdminAuditOut(id=item.id, admin_id=item.admin_id,
+                                    admin_name=admin.name if admin else "未知管理員",
+                                    action=item.action, target_type=item.target_type,
+                                    target_id=item.target_id, detail=detail,
+                                    created_at=item.created_at))
+    return result
 
 
 @app.patch("/api/admin/users/{user_id}/status", response_model=AdminUserOut)
@@ -204,7 +220,7 @@ def admin_user_status(user_id: str, disabled: bool, admin: User = Depends(admin_
     if target.id == admin.id and disabled:
         raise HTTPException(status_code=409, detail="不能停用目前管理員帳戶")
     target.is_disabled = disabled
-    audit(db, admin, "DISABLE_USER" if disabled else "ENABLE_USER", "user", target.id, f"disabled={disabled}")
+    audit(db, admin, "DISABLE_USER" if disabled else "ENABLE_USER", "user", target.id, f"帳戶：{target.name} (@{target.username})；狀態：{'已停用' if disabled else '已啟用'}")
     db.commit(); db.refresh(target)
     return target
 
@@ -215,7 +231,8 @@ def admin_archive_group(group_id: str, admin: User = Depends(admin_user), db: Se
     if not group:
         raise HTTPException(status_code=404, detail="找不到群組")
     group.archived_at = datetime.now(timezone.utc)
-    audit(db, admin, "ARCHIVE_GROUP", "group", group.id, group.name)
+    audit(db, admin, "ARCHIVE_GROUP", "group", group.id,
+          f"群組：{group.name}；事件數：{len(group.events)}；狀態：已封存")
     db.commit(); db.refresh(group)
     owner = db.get(User, group.owner_id)
     return AdminGroupOut(id=group.id, name=group.name, owner_id=group.owner_id, owner_name=owner.name if owner else "未知", created_at=group.created_at, archived_at=group.archived_at, event_count=len(group.events))

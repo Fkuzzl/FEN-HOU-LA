@@ -41,6 +41,7 @@ class AdminGroupOut(BaseModel):
 class AdminAuditOut(BaseModel):
     id: str
     admin_id: str
+    admin_name: str
     action: str
     target_type: str
     target_id: str | None
